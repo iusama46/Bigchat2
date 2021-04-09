@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="Gradle: im.zego:express-video:2.4.0@aar">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/express-video-2.4.0.aar/24b79b1901299a1d24c247276ce2a97a/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/express-video-2.4.0.aar/24b79b1901299a1d24c247276ce2a97a/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/express-video-2.4.0.aar/24b79b1901299a1d24c247276ce2a97a/AndroidManifest.xml" />
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/express-video-2.4.0.aar/24b79b1901299a1d24c247276ce2a97a/jars/libs/ve.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/im.zego/express-video/2.4.0/f1c7656f958bc27cc504dcddf950fe233e486e7f/express-video-2.4.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
