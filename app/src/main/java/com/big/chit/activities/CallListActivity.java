@@ -3,6 +3,7 @@ package com.big.chit.activities;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
@@ -25,6 +26,11 @@ import com.big.chit.models.Status;
 import com.big.chit.models.User;
 import com.big.chit.services.FetchMyUsersService;
 import com.big.chit.utils.Helper;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 
@@ -103,7 +109,8 @@ public class CallListActivity extends BaseActivity {
     void statusUpdated(Status status) {
 
     }
-
+boolean isTokenReceived=false;
+    String token="";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -111,6 +118,29 @@ public class CallListActivity extends BaseActivity {
         setContentView(R.layout.activity_call_list);
 
         uiInit();
+
+            DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
+        try {
+            reference.child("token").addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.getValue().toString() != null) {
+                        token = dataSnapshot.getValue().toString();
+                        Log.d("clima token", token);
+                        isTokenReceived = true;
+                    }
+
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            });
+        }catch (Exception e){
+            Log.d("clima", e.getMessage());
+
+        }
 
     }
 
@@ -205,15 +235,19 @@ public class CallListActivity extends BaseActivity {
         if (permissionsAvailable(permissionsSinch)) {
             try {
 
-                Log.d("clima", user.getName());
-                Log.d("clima", userMe.getName());
+
                 if (user == null) {
                     // Service failed for some reason, show a Toast and abort
                     Toast.makeText(this, "Service is not started. Try stopping the service and starting it again before placing a call.", Toast.LENGTH_LONG).show();
                     return;
                 }
-                String callId = "room";
-                startActivity(CallScreenActivity.newIntent(this, user, callId, "OUT", callIsVideo));
+                if(!isTokenReceived)
+                {
+                    Toast.makeText(this, "Unable to make call", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                startActivity(CallScreenActivity.newIntent(this, user,  "OUT", callIsVideo, token));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());
                 //ActivityCompat.requestPermissions(this, new String[]{e.getRequiredPermission()}, 0);

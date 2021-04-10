@@ -3,13 +3,21 @@ package com.big.chit.activities;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.webkit.WebView;
 import android.widget.ProgressBar;
 
 import com.big.chit.R;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.iid.FirebaseInstanceId;
 
 public class PrivacyPolicyActivity extends AppCompatActivity {
 
@@ -33,6 +41,23 @@ public class PrivacyPolicyActivity extends AppCompatActivity {
                 finish();
             }
         });
+
+        try {
+            String token = FirebaseInstanceId.getInstance().getToken();
+            String uId = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
+            DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(uId);
+            reference.child("token").setValue(token).addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    if (task.isSuccessful())
+                        Log.d("clima", "token saved");
+                    else
+                        Log.d("clima", "token failed");
+                }
+            });
+        } catch (Exception e) {
+            Log.d("clima e", e.getMessage());
+        }
     }
 
 

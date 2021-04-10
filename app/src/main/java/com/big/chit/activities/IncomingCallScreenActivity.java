@@ -27,7 +27,6 @@ import com.big.chit.models.Group;
 import com.big.chit.models.LogCall;
 import com.big.chit.models.Status;
 import com.big.chit.models.User;
-import com.big.chit.services.SinchService;
 import com.big.chit.utils.AudioPlayer;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -50,13 +49,13 @@ import java.util.HashMap;
  */
 
 public class IncomingCallScreenActivity extends BaseActivity {
-    static final String TAG = "clima";
     private static final int REQUEST_PERMISSION_CALL = 951;
     private static final String CHANNEL_ID_USER_MISSCALL = "my_channel_04";
     ValueEventListener valueEventListener;
     DatabaseReference reference;
+    boolean isVideo = false;
     private String[] recordPermissions = {Manifest.permission.VIBRATE, Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
-    private String mCallId;
+    private String mCallerId, mRoomId;
     private AudioPlayer mAudioPlayer;
     private View.OnClickListener mClickListener = new View.OnClickListener() {
         @Override
@@ -89,8 +88,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        //MainActivity.callerId="+923443190037";
-        //MainActivity.RoomId=MainActivity.callerId;
+
         setContentView(R.layout.activity_incoming_call_screen);
 
         Window win = getWindow();
@@ -99,11 +97,12 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
         mAudioPlayer = new AudioPlayer(this);
         mAudioPlayer.playRingtone();
-//        mAudioPlayer.stopRingtone();
 
-        //todo
         Intent intent = getIntent();
-        mCallId = intent.getStringExtra(SinchService.CALL_ID);
+        mCallerId = intent.getStringExtra("caller_id");
+        mRoomId = intent.getStringExtra("room_id");
+        isVideo = intent.getBooleanExtra("is_video", false);
+
 
         findViewById(R.id.answerButton).setOnClickListener(mClickListener);
         findViewById(R.id.declineButton).setOnClickListener(mClickListener);
@@ -114,18 +113,16 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
     void onZegoConnected() {
 
-        //todo
-        //String ph = MainActivity.callerId;
-        String ph = MainActivity.callerId;
+
         HashMap<String, User> myUsers = helper.getCacheMyUsers();
-        if (myUsers != null && myUsers.containsKey(ph)) {
-            user = myUsers.get(ph);
+        if (myUsers != null && myUsers.containsKey(mCallerId)) {
+            user = myUsers.get(mCallerId);
         }
 
         TextView remoteUser = (TextView) findViewById(R.id.remoteUser);
         ImageView userImage1 = findViewById(R.id.userImage1);
         ImageView userImage2 = findViewById(R.id.userImage2);
-        remoteUser.setText(user != null ? user.getNameToDisplay() : ph);
+        remoteUser.setText(user != null ? user.getNameToDisplay() : mCallerId);
         if (user != null && !user.getImage().isEmpty()) {
 //                Glide.with(this).load(user.getImage()).apply(new RequestOptions().placeholder(R.drawable.ic_placeholder)).into(userImage1);
 //                Glide.with(this).load(user.getImage()).apply(RequestOptions.circleCropTransform().placeholder(R.drawable.ic_placeholder)).into(userImage2);
@@ -138,7 +135,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
             userImage2.setBackgroundResource(R.drawable.ic_avatar);
         }
         TextView callingType = findViewById(R.id.txt_calling);
-        callingType.setText(getResources().getString(R.string.app_name) + (MainActivity.isVideo ? " Incoming Video Calling" : " Incoming Voice Calling"));
+        callingType.setText(getResources().getString(R.string.app_name) + (isVideo ? " Incoming Video Calling" : " Incoming Voice Calling"));
 
 
         reference = FirebaseDatabase.getInstance().getReference().child("data");
@@ -160,7 +157,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
                                 LogCall logCall = null;
                                 if (user == null) {
-                                    user = new User(MainActivity.callerId, MainActivity.callerId, getString(R.string.app_name), "");
+                                    user = new User(mCallerId, mCallerId, getString(R.string.app_name), "");
                                 }
 
                                 rChatDb.beginTransaction();
@@ -171,7 +168,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
                                 DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
                                 reference.child(userMe.getId()).removeValue();
 
-                                //Toast.makeText(IncomingCallScreenActivity.this, "Canceled bu caller", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(IncomingCallScreenActivity.this, "Canceled by caller", Toast.LENGTH_SHORT).show();
                                 finish();
                             }
 
@@ -194,13 +191,14 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
     private void answerClicked() {
         mAudioPlayer.stopRingtone();
+        Log.d("clima 22", user.getId());
+        Log.d("clima 21", mCallerId);
         try {
-            mCallId = MainActivity.RoomId;
-            startActivity(CallScreenActivity.newIntent(this, user, mCallId, "IN", MainActivity.isVideo));
+            startActivity(CallScreenActivity.newIntent(this, user, "IN",isVideo, mRoomId));
             finish();
         } catch (Exception e) {
             Log.e("CHECK", e.getMessage());
-            //ActivityCompat.requestPermissions(this, new String[]{e.getRequiredPermission()}, 0);
+
         }
 
     }
@@ -219,7 +217,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
         LogCall logCall = null;
         if (user == null) {
-            user = new User(MainActivity.callerId, MainActivity.callerId, getString(R.string.app_name), "");
+            user = new User(mCallerId, mCallerId, getString(R.string.app_name), "");
         }
 
         rChatDb.beginTransaction();
@@ -231,7 +229,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
         reference.child("canceled").setValue(true).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
-                //Toast.makeText(IncomingCallScreenActivity.this, "Canceled", Toast.LENGTH_SHORT).show();
+                //    Toast.makeText(IncomingCallScreenActivity.this, "Canceled", Toast.LENGTH_SHORT).show();
                 finish();
             }
         });
@@ -283,10 +281,6 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
     }
 
-//    @Override
-//    void onSinchDisconnected() {
-//
-//    }
 
     @Override
     void myContactsResult(ArrayList<Contact> myContacts) {

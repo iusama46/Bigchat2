@@ -91,6 +91,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseException;
 import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -153,17 +154,20 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     private static final int REQUEST_PERMISSION_RECORD = 159;
     private static final int REQUEST_PERMISSION_CALL = 951;
     private static final String EXTRA_DATA_GROUP1 = "EXTRA_DATA_GROUP1";
-    private static String EXTRA_DATA_GROUP = "extradatagroup";
-    private static String EXTRA_DATA_USER = "extradatauser";
-    private static String EXTRA_DATA_LIST = "extradatalist";
-    private static String DELETE_TAG = "deletetag";
+    private static final String EXTRA_DATA_GROUP = "extradatagroup";
+    private static final String EXTRA_DATA_USER = "extradatauser";
+    private static final String EXTRA_DATA_LIST = "extradatalist";
+    private static final String DELETE_TAG = "deletetag";
+    boolean isTokenReceived = false;
+    String token = "";
     String senderIdDelete = "";
     String recipientIdDelete = "";
     String bodyDelete = "";
     String msgID = "", newMsgID = "";
     long dateDelete;
+    boolean isGroup = false;
     private MessageAdapter messageAdapter;
-    private ArrayList<Message> dataList = new ArrayList<>();
+    private final ArrayList<Message> dataList = new ArrayList<>();
     private RealmResults<Chat> queryResult;
     private String chatChild, userOrGroupId;
     private int countSelected = 0;
@@ -173,7 +177,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     private String recordFilePath;
     private float displayWidth;
     private boolean callIsVideo;
-    private ArrayList<Integer> adapterPositions = new ArrayList<>();
+    private final ArrayList<Integer> adapterPositions = new ArrayList<>();
     private MediaPlayer mediaPlayer = new MediaPlayer();
     private String currentlyPlaying = "";
     private Toolbar toolbar;
@@ -201,12 +205,10 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     private String replyId = "0";
     private TextView userStatus;
     private boolean delete = false;
-    private boolean deleteGroup = false;
+    private final boolean deleteGroup = false;
     private ImageView camera;
-    boolean isGroup =false;
-
     //Download complete listener
-    private BroadcastReceiver downloadCompleteReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver downloadCompleteReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             if (intent != null && intent.getAction() != null)
                 switch (intent.getAction()) {
@@ -222,7 +224,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     };
 
     //Download event listener
-    private BroadcastReceiver downloadEventReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver downloadEventReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             DownloadFileEvent downloadFileEvent = intent.getParcelableExtra("data");
@@ -231,7 +233,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
             }
         }
     };
-    private View.OnTouchListener voiceMessageListener = new View.OnTouchListener() {
+    private final View.OnTouchListener voiceMessageListener = new View.OnTouchListener() {
         @Override
         public boolean onTouch(View v, MotionEvent event) {
             int x = (int) event.getX();
@@ -289,7 +291,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
             return false;
         }
     };
-    private RealmChangeListener<RealmResults<Chat>> realmChangeListener = new RealmChangeListener<RealmResults<Chat>>() {
+    private final RealmChangeListener<RealmResults<Chat>> realmChangeListener = new RealmChangeListener<RealmResults<Chat>>() {
         @Override
         public void onChange(RealmResults<Chat> element) {
             if (element != null && element.isValid() && element.size() > 0) {
@@ -426,18 +428,6 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         //do nothing
     }
 
-    //TODO
-//    @Override
-//    void onSinchConnected() {
-//        callAudio.setClickable(true);
-//        callVideo.setClickable(true);
-//    }
-//
-//    @Override
-//    void onSinchDisconnected() {
-//        callAudio.setClickable(false);
-//        callVideo.setClickable(false);
-//    }
 
     @Override
     void userUpdated(User valueUser) {
@@ -636,6 +626,31 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         registerUserUpdates();
         checkAndForward();
         initSwipe();
+        if (!isGroup) {
+                DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
+            try {
+
+                reference.child("token").addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        if (dataSnapshot.getValue().toString() != null) {
+                            token = dataSnapshot.getValue().toString();
+                            Log.d("clima token", token);
+                            isTokenReceived = true;
+                        }
+
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                    }
+                });
+            }catch (Exception e){
+                Log.d("clima", e.getMessage());
+
+            }
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -866,7 +881,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         } else {
             userStatus.setText("tap here for group info");
 
-            isGroup=true;
+            isGroup = true;
             callAudio.setClickable(true);
             callVideo.setClickable(true);
             callAudio.setVisibility(View.VISIBLE);
@@ -978,7 +993,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         super.onOptionsItemSelected(item);
         switch (item.getItemId()) {
             case R.id.action_copy:
-                StringBuilder stringBuilder = new StringBuilder("");
+                StringBuilder stringBuilder = new StringBuilder();
                 for (Message message : dataList) {//Get all selected messages in a String
                     if (message.isSelected() && !TextUtils.isEmpty(message.getBody())) {
                         // stringBuilder.append(Helper.getTime(message.getDate()));
@@ -1017,9 +1032,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
                                                 if (msg.getUserIds() != null) {
                                                     ArrayList<String> deleteUSerIds = new ArrayList<>();
                                                     deleteUSerIds.addAll(msg.getUserIds());
-                                                    if (deleteUSerIds.contains(userMe.getId())) {
-                                                        deleteUSerIds.remove(userMe.getId());
-                                                    }
+                                                    deleteUSerIds.remove(userMe.getId());
                                                     chatRef.child(chatChild).child(msg.getId()).child("userIds").setValue(deleteUSerIds);
                                                     senderIdDelete = msg.getSenderId();
                                                     recipientIdDelete = msg.getRecipientId();
@@ -1377,10 +1390,15 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     }
 
     private void makeCall() {
-        if(isGroup){
-            Log.d("clima",group.getId());
-            Log.d("clima",group.getUserIds().toString());
+        if (isGroup) {
+            Log.d("clima", group.getId());
+            Log.d("clima", group.getUserIds().toString());
             startActivity(GroupCallActivity.newIntent(this, group, "callId", "OUT", callIsVideo));
+            return;
+        }
+
+        if (!isTokenReceived) {
+            Toast.makeText(this, "Unable to make call", Toast.LENGTH_SHORT).show();
             return;
         }
         userMe = helper.getLoggedInUser();
@@ -1403,15 +1421,14 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         if (permissionsAvailable(permissionsSinch)) {
             try {
 
-                Log.d("clima", user.getName());
-                Log.d("clima", userMe.getName());
+
                 if (user == null) {
                     // Service failed for some reason, show a Toast and abort
                     Toast.makeText(this, "Service is not started. Try stopping the service and starting it again before placing a call.", Toast.LENGTH_LONG).show();
                     return;
                 }
                 String callId = "room";
-                startActivity(CallScreenActivity.newIntent(this, user, callId, "OUT",callIsVideo));
+                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, token));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());
                 //ActivityCompat.requestPermissions(this, new String[]{e.getRequiredPermission()}, 0);
