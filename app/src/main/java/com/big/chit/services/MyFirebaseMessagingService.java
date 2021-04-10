@@ -14,12 +14,12 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     @Override
     public void onNewToken(String s) {
         super.onNewToken(s);
-        Log.e("NEW_TOKEN",s);
+        Log.e("clima",s);
     }
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
-        Log.e("FCM", "onMessageReceived");
+        Log.e("clima", "onMessageReceived");
 
         if (new Helper(this).isLoggedIn()) {
             Intent intent = new Intent(this, FirebaseChatService.class);

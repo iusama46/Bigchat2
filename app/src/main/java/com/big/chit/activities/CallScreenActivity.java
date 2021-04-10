@@ -42,6 +42,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.messaging.FirebaseMessaging;
 import com.squareup.picasso.Picasso;
 
 import org.json.JSONObject;
@@ -62,7 +63,7 @@ import im.zego.zegoexpress.entity.ZegoCanvas;
 import im.zego.zegoexpress.entity.ZegoRoomConfig;
 import im.zego.zegoexpress.entity.ZegoStream;
 import im.zego.zegoexpress.entity.ZegoUser;
-
+import com.google.firebase.messaging.RemoteMessage;
 /**
  * Zego Calling SDK Added by Ussama Iftikhar on 03-April-2021.
  * Email iusama46@gmail.com
@@ -385,6 +386,28 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     protected void onDestroy() {
         mAudioPlayer.stopProgressTone();
         mAudioPlayer.stopRingtone();
+
+//        HttpClient client = HttpClientBuilder.create().build();
+//        HttpPost post = new HttpPost("https://fcm.googleapis.com/fcm/send");
+//        post.setHeader("Content-type", "application/json");
+//        post.setHeader("Authorization", "key=AIzaSyBSxxxxsXevRq0trDbA9mhnY_2jqMoeChA");
+//
+//        JSONObject message = new JSONObject();
+//        message.put("to", "dBbB2BFT-VY:APA91bHrvgfXbZa-K5eg9vVdUkIsHbMxxxxxc8dBAvoH_3ZtaahVVeMXP7Bm0iera5s37ChHmAVh29P8aAVa8HF0I0goZKPYdGT6lNl4MXN0na7xbmvF25c4ZLl0JkCDm_saXb51Vrte");
+//        message.put("priority", "high");
+//
+//        JSONObject notification = new JSONObject();
+//        notification.put("title", "Java");
+//        notification.put("body", "Notificação do Java");
+//
+//        message.put("notification", notification);
+//
+//        post.setEntity(new StringEntity(message.toString(), "UTF-8"));
+//        HttpResponse response = client.execute(post);
+//        System.out.println(response);
+//        System.out.println(message);
+
+
 
         setVolumeControlStream(AudioManager.USE_DEFAULT_STREAM_TYPE);
 

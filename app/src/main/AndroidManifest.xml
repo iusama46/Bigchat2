@@ -148,10 +148,6 @@
         <service
             android:name=".services.FetchMyUsersService"
             android:exported="false" />
-        <service
-            android:name=".services.SinchService"
-            android:enabled="true"
-            android:exported="false" />
 
         <activity
             android:name=".activities.ChooseSignInActivity"
@@ -180,7 +176,6 @@
             android:screenOrientation="portrait"
             android:windowSoftInputMode="stateHidden|adjustResize|adjustPan" />
 
-        <service android:name=".services.ZegoService"/>
     </application>
 
 

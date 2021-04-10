@@ -35,7 +35,6 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.big.chit.R;
 import com.big.chit.adapters.MenuUsersRecyclerAdapter;
@@ -57,7 +56,6 @@ import com.big.chit.models.Message;
 import com.big.chit.models.Status;
 import com.big.chit.models.User;
 import com.big.chit.services.FetchMyUsersService;
-import com.big.chit.services.ZegoService;
 import com.big.chit.utils.Helper;
 import com.big.chit.views.SwipeControlViewPager;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -141,14 +139,14 @@ public class MainActivity extends BaseActivity implements HomeIneractor, OnUserG
         userId = userMe.getId();
         //setup recyclerview in drawer layout
         setupMenu();
-        Intent intent = new Intent(this, ZegoService.class);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent);
-        }
-        else {
-            startService(intent);
-        }
-        //If its a url then load it, else Make a text drawable of user's name
+//        Intent intent = new Intent(this, ZegoService.class);
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            startForegroundService(intent);
+//        }
+//        else {
+//            startService(intent);
+//        }
+//        //If its a url then load it, else Make a text drawable of user's name
         setProfileImage(usersImage);
         usersImage.setOnClickListener(this);
         backImage.setOnClickListener(this);
