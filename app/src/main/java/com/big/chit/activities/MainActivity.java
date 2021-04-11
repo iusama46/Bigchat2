@@ -151,7 +151,12 @@ public class MainActivity extends BaseActivity implements HomeIneractor, OnUserG
         floatingActionButton.setVisibility(View.VISIBLE);
 
 
-
+        if (getIntent().getExtras() != null) {
+            for (String key : getIntent().getExtras().keySet()) {
+                String value = getIntent().getExtras().getString(key);
+                Log.d("clima 2 ", "Key: " + key + " Value: " + value);
+            }
+        }
 
         setupViewPager();
         fetchContacts();

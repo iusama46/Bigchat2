@@ -97,6 +97,8 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     TextureView textureView;
     boolean useFrontCamera = true;
     String receiverToken = "";
+    String inComingCallerID = "";
+    String inComingRoomID = "";
     private Chronometer mCallDuration;
     private AudioPlayer mAudioPlayer;
     private String inOrOut;
@@ -298,8 +300,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         mAddedListener = savedInstanceState.getBoolean(ADDED_LISTENER);
     }
 
-    String inComingCallerID="";
-    String inComingRoomID="";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -430,9 +430,8 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         try {
             if (!inOrOut.equals("IN")) {
                 DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(user.getId());
-                if (isConnected) {
-                    reference.removeValue();
-                } else {
+                reference.removeValue();
+                if (!isConnected) {
                     //todo miss call message
                 }
             }
@@ -487,7 +486,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
         if (!isVideoCall && !inOrOut.equals("IN"))
             streamID = userMe.getId();
-        else if (!isVideoCall && inOrOut.equals("IN"))
+        else if (!isVideoCall)
             streamID = user.getId();
 
         if (isVideoCall)
@@ -511,7 +510,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         }
 
         if (!inOrOut.equals("IN")) {
-
             if (!isVideoCall)
                 zegoExpressEngine.startPublishingStream(streamID);
 
@@ -633,8 +631,8 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
             dataObj.put("room_id", callRoomId);
             dataObj.put("stream_id", streamID);
             dataObj.put("missed_call", isMissedCall);
-            dataObj.put("caller_id", user.getId());
-            dataObj.put("caller_name", user.getName());
+            dataObj.put("caller_id", userMe.getId());
+            dataObj.put("caller_name", userMe.getName());
 
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("notification", notificationObject);

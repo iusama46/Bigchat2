@@ -100,6 +100,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
         Intent intent = getIntent();
         mCallerId = intent.getStringExtra("caller_id");
+        mCallerId = intent.getStringExtra("caller_id");
         mRoomId = intent.getStringExtra("room_id");
         isVideo = intent.getBooleanExtra("is_video", false);
 
@@ -112,8 +113,6 @@ public class IncomingCallScreenActivity extends BaseActivity {
     }
 
     void onZegoConnected() {
-
-
         HashMap<String, User> myUsers = helper.getCacheMyUsers();
         if (myUsers != null && myUsers.containsKey(mCallerId)) {
             user = myUsers.get(mCallerId);
@@ -169,6 +168,11 @@ public class IncomingCallScreenActivity extends BaseActivity {
                                 reference.child(userMe.getId()).removeValue();
 
                                 Toast.makeText(IncomingCallScreenActivity.this, "Canceled by caller", Toast.LENGTH_SHORT).show();
+                                Intent data = new Intent();
+                                String text = "Result to be returned....";
+                                data.setData(Uri.parse(text));
+                                setResult(RESULT_OK, data);
+
                                 finish();
                             }
 
@@ -230,6 +234,10 @@ public class IncomingCallScreenActivity extends BaseActivity {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 //    Toast.makeText(IncomingCallScreenActivity.this, "Canceled", Toast.LENGTH_SHORT).show();
+                Intent data = new Intent();
+                String text = "Result to be returned....";
+                data.setData(Uri.parse(text));
+                setResult(RESULT_OK, data);
                 finish();
             }
         });

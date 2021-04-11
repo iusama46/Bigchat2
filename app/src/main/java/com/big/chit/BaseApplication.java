@@ -8,7 +8,6 @@ import android.arch.lifecycle.ProcessLifecycleOwner;
 import android.content.Context;
 import android.support.multidex.MultiDex;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.big.chit.models.User;
 import com.big.chit.receivers.ConnectivityReceiver;
@@ -31,6 +30,7 @@ public class BaseApplication extends Application implements LifecycleObserver {
     private static boolean isInBackground = false;
     protected Helper helper;
     protected User userMe;
+    public static final String CALL="INCOMING_CALL";
 
     @Override
     protected void attachBaseContext(Context base) {
@@ -42,6 +42,14 @@ public class BaseApplication extends Application implements LifecycleObserver {
     @Override
     public void onCreate() {
         super.onCreate();
+//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+//            NotificationChannel notificationChannel =  new NotificationChannel(
+//                    CALL,"Calling", NotificationManager.IMPORTANCE_HIGH
+//            );
+//
+//            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+//            manager.createNotificationChannel(notificationChannel);
+//        }
         ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
         ConnectivityReceiver.init(this);
         EmojiManager.install(new GoogleEmojiProvider());
@@ -120,14 +128,14 @@ public class BaseApplication extends Application implements LifecycleObserver {
         markOnline(false);
         Helper.CURRENT_CHAT_ID = null;
 
-        Log.d("MyApp", "App in background");
+        Log.d("clima", "App in background");
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
     private void onAppForegrounded() {
         markOnline(true);
 
-        Log.d("MyApp", "App in foreground");
+        Log.d("clima", "App in foreground");
     }
 
     private void markOnline(boolean b) {
