@@ -392,6 +392,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
     @Override
     protected void onDestroy() {
+        SplashActivity.CALL_STATUS=2;
         mAudioPlayer.stopProgressTone();
         mAudioPlayer.stopRingtone();
 
@@ -422,7 +423,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     }
 
     private void endCall() {
-
+        SplashActivity.CALL_STATUS=2;
         mAudioPlayer.stopProgressTone();
         mAudioPlayer.stopRingtone();
         //saveLog();
@@ -623,7 +624,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
             JSONObject notificationObject = new JSONObject();
             notificationObject.put("title", isVideoCall ? "Video Call" : "Voice Call");
-            notificationObject.put("body", user.getId() + " is calling you");
+            notificationObject.put("body", userMe.getId() + " is calling you");
 
             JSONObject dataObj = new JSONObject();
             dataObj.put("is_video", isVideoCall);

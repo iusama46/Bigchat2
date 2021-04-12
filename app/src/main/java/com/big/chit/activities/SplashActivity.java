@@ -15,10 +15,33 @@ public class SplashActivity extends AppCompatActivity {
     boolean calledScreen = false;
     boolean isCall = false;
     int request_Code = 901;
+    public static int CALL_STATUS=0;
 
     @Override
     protected void onStart() {
         super.onStart();
+        Log.d("clima","onst");
+        if(CALL_STATUS==2 &&calledScreen){
+            Log.d("clima" ,"calllling");
+            calledScreen=false;
+            CALL_STATUS=0;
+            final Helper helper = new Helper(this);
+            startActivity(new Intent(SplashActivity.this, helper.getLoggedInUser() != null ? MainActivity.class : SignInActivity.class).setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP));
+            finish();
+
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d("clima","pase");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d("clima", "resume");
     }
 
     @Override
@@ -26,6 +49,7 @@ public class SplashActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
         Log.d("clima", "onk");
+        CALL_STATUS=0;
 
         if (getIntent().getExtras() != null) {
             isCall = Boolean.parseBoolean(getIntent().getStringExtra("is_call"));
@@ -80,11 +104,13 @@ public class SplashActivity extends AppCompatActivity {
             Log.d("clima", "ack2");
             if (resultCode == RESULT_OK) {
                 if(calledScreen) {
+                    calledScreen=false;
+                    isCall=false;
 
                     final Helper helper = new Helper(this);
                     startActivity(new Intent(SplashActivity.this, helper.getLoggedInUser() != null ? MainActivity.class : SignInActivity.class).setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP));
                     finish();
-                    calledScreen=false;
+
                 } else {
                     finishAffinity();
                 }
