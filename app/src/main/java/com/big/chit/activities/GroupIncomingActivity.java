@@ -27,7 +27,6 @@ import com.big.chit.models.Group;
 import com.big.chit.models.LogCall;
 import com.big.chit.models.Status;
 import com.big.chit.models.User;
-import com.big.chit.services.SinchService;
 import com.big.chit.utils.AudioPlayer;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -41,23 +40,23 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 
 /**
- * Zego Calling SDK Added by Ussama Iftikhar on 03-April-2021.
+ * Agora Calling SDK Added by Ussama Iftikhar on 12-April-2021.
  * Email iusama46@gmail.com
  * Email iusama466@gmail.com
  * Github https://github.com/iusama46
  */
 public class GroupIncomingActivity extends BaseActivity {
-    static final String TAG = "clima";
     private static final int REQUEST_PERMISSION_CALL = 953;
     private static final String CHANNEL_ID_USER_MISSCALL = "my_channel_05";
+    private final String[] recordPermissions = {Manifest.permission.VIBRATE, Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
     ValueEventListener valueEventListener;
     DatabaseReference reference;
-    private String[] recordPermissions = {Manifest.permission.VIBRATE, Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
-    private String mCallId;
-
+    boolean isVideo = false;
     //TODO
     private AudioPlayer mAudioPlayer;
-    private View.OnClickListener mClickListener = new View.OnClickListener() {
+    private String callerName, roomToken, mRoomId;
+    private String mCallerId;
+    private final View.OnClickListener mClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             switch (v.getId()) {
@@ -86,9 +85,14 @@ public class GroupIncomingActivity extends BaseActivity {
 
         mAudioPlayer = new AudioPlayer(this);
         mAudioPlayer.playRingtone();
-//        mAudioPlayer.stopRingtone();
+
         Intent intent = getIntent();
-        mCallId = intent.getStringExtra(SinchService.CALL_ID);
+
+        mCallerId = intent.getStringExtra("caller_id");
+        mRoomId = intent.getStringExtra("room_id");
+        roomToken = intent.getStringExtra("room_token");
+        callerName = intent.getStringExtra("caller_name");
+        isVideo = intent.getBooleanExtra("is_video", false);
 
         findViewById(R.id.answerButton).setOnClickListener(mClickListener);
         findViewById(R.id.declineButton).setOnClickListener(mClickListener);
@@ -103,18 +107,17 @@ public class GroupIncomingActivity extends BaseActivity {
     }
 
     void onZegoConnected() {
-
-
 //        String ph = MainActivity.callerId;
 //        HashMap<String, User> myUsers = helper.getCacheMyUsers();
 //        if (myUsers != null && myUsers.containsKey(ph)) {
 //            user = myUsers.get(ph);
 //        }
 
-        TextView remoteUser = (TextView) findViewById(R.id.remoteUser);
+        TextView remoteUser = findViewById(R.id.remoteUser);
         ImageView userImage1 = findViewById(R.id.userImage1);
         ImageView userImage2 = findViewById(R.id.userImage2);
-        remoteUser.setText(MainActivity.name);
+        Log.d("clima remote", callerName);
+        remoteUser.setText(callerName);
         reference = FirebaseDatabase.getInstance().getReference().child("data");
 
 
@@ -126,26 +129,32 @@ public class GroupIncomingActivity extends BaseActivity {
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
                     if (dataSnapshot.getChildrenCount() > 0) {
-                        if (dataSnapshot.getKey().equals(phone.toString())) {
+                        if (dataSnapshot.getKey().equals(phone)) {
                             boolean value = (boolean) dataSnapshot.child("answered").getValue();
                             String callerId = dataSnapshot.child("uId").getValue().toString();
                             if (!value) {
                                 mAudioPlayer.stopRingtone();
 
-                                LogCall logCall = null;
-                                if (user == null) {
-                                    user = new User(MainActivity.callerId, MainActivity.callerId, getString(R.string.app_name), "");
-                                }
-
-                                rChatDb.beginTransaction();
-                                logCall = new LogCall(user, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), user.getId());
-                                rChatDb.copyToRealm(logCall);
-                                rChatDb.commitTransaction();
+//                                LogCall logCall = null;
+//                                if (user == null) {
+//                                    user = new User(callerId, callerId, getString(R.string.app_name), "");
+//                                }
+//
+//                                rChatDb.beginTransaction();
+//                                logCall = new LogCall(user, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), user.getId());
+//                                rChatDb.copyToRealm(logCall);
+//                                rChatDb.commitTransaction();
 
                                 DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
                                 reference.child(userMe.getId()).removeValue();
 
                                 //Toast.makeText(IncomingCallScreenActivity.this, "Canceled bu caller", Toast.LENGTH_SHORT).show();
+
+                                Intent data = new Intent();
+                                String text = "Result to be returned....";
+                                data.setData(Uri.parse(text));
+                                setResult(RESULT_OK, data);
+
                                 finish();
                             }
 
@@ -169,11 +178,15 @@ public class GroupIncomingActivity extends BaseActivity {
     private void answerClicked() {
         mAudioPlayer.stopRingtone();
 
-
         try {
-            mCallId = MainActivity.RoomId;
+            //mCallId = MainActivity.RoomId;
 
-            startActivity(GroupCallActivity.newIntent(this, group, mCallId, "IN", MainActivity.isVideo));
+            startActivity(GroupCallActivity.newIntent(this, group, mCallerId, "IN", isVideo, mRoomId,roomToken));
+
+            Intent data = new Intent();
+            String text = "Result to be returned....";
+            data.setData(Uri.parse(text));
+            setResult(RESULT_OK, data);
             finish();
         } catch (Exception e) {
             Log.e("CHECK", e.getMessage());
@@ -198,8 +211,12 @@ public class GroupIncomingActivity extends BaseActivity {
         reference.child("canceled").setValue(true).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
-                notifyMisscall();
-                ///Toast.makeText(IncomingCallScreenActivity.this, "Canceled", Toast.LENGTH_SHORT).show();
+
+                Intent data = new Intent();
+                String text = "Result to be returned....";
+                data.setData(Uri.parse(text));
+                setResult(RESULT_OK, data);
+
                 finish();
             }
         });

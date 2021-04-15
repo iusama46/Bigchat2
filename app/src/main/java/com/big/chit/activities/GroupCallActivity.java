@@ -1,9 +1,11 @@
 package com.big.chit.activities;
 
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -14,13 +16,16 @@ import android.os.Bundle;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.SurfaceView;
 import android.view.TextureView;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
 import android.widget.Chronometer;
+import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -29,6 +34,11 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.big.chit.R;
 import com.big.chit.Utils;
 import com.big.chit.models.Contact;
@@ -36,7 +46,6 @@ import com.big.chit.models.Group;
 import com.big.chit.models.LogCall;
 import com.big.chit.models.Status;
 import com.big.chit.models.User;
-import com.big.chit.services.SinchService;
 import com.big.chit.utils.AudioPlayer;
 import com.big.chit.utils.OnDragTouchListener;
 import com.big.chit.utils.ScreenHelper;
@@ -45,6 +54,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.iid.FirebaseInstanceId;
 
 import org.json.JSONObject;
 
@@ -54,37 +64,36 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import im.zego.zegoexpress.ZegoExpressEngine;
-import im.zego.zegoexpress.callback.IZegoEventHandler;
-import im.zego.zegoexpress.constants.ZegoPlayerState;
-import im.zego.zegoexpress.constants.ZegoPublisherState;
-import im.zego.zegoexpress.constants.ZegoRoomState;
-import im.zego.zegoexpress.constants.ZegoScenario;
-import im.zego.zegoexpress.constants.ZegoUpdateType;
-import im.zego.zegoexpress.constants.ZegoViewMode;
-import im.zego.zegoexpress.entity.ZegoCanvas;
-import im.zego.zegoexpress.entity.ZegoRoomConfig;
-import im.zego.zegoexpress.entity.ZegoStream;
-import im.zego.zegoexpress.entity.ZegoUser;
+import io.agora.rtc.Constants;
+import io.agora.rtc.IRtcEngineEventHandler;
+import io.agora.rtc.RtcEngine;
+import io.agora.rtc.video.VideoCanvas;
 
 /**
- * Zego Calling SDK Added by Ussama Iftikhar on 03-April-2021.
+ * Agora Calling SDK Added by Ussama Iftikhar on 12-April-2021.
  * Email iusama46@gmail.com
  * Email iusama466@gmail.com
  * Github https://github.com/iusama46
  */
 
 public class GroupCallActivity extends BaseActivity implements SensorEventListener {
-    static final String TAG = GroupCallActivity.class.getSimpleName();
+    static final String TAG = "clima";
     static final String ADDED_LISTENER = "addedListener";
     private static final String EXTRA_DATA_USER = "extradatauser";
     private static final String EXTRA_DATA_IN_OR_OUT = "extradatainorout";
+    private static final int PERMISSION_REQ_ID_RECORD_AUDIO = 22;
+    private static final String[] REQUESTED_PERMISSIONS = {
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.CAMERA,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
+    private static final int PERMISSION_REQ_ID = 22;
     private final int mCallDurationSecond = 0;
     String usersIds = " ";
     String callRoomId = "group";
     boolean isSavedID = true;
     PowerManager.WakeLock wlOff = null, wlOn = null;
-    ZegoExpressEngine zegoExpressEngine;
+
     boolean isConnected = false;
     String streamID;
     boolean isSpeaker = false;
@@ -92,7 +101,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     Group group;
     ImageView addPerson;
     boolean isVideoCall;
-    boolean useFrontCamera = true;
+
     TextureView localTextureView;
     User tempUser;
     DatabaseReference userCall;
@@ -103,6 +112,9 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     TextureView gridTextureView;
     ScrollView scrollView;
     boolean isAll = false;
+    FrameLayout mLocalContainer, mRemoteContainer;
+    SurfaceView mLocalView, mRemoteView;
+    private RtcEngine mRtcEngine;
     private AudioPlayer mAudioPlayer;
     private String mCallId, inOrOut;
     private boolean mAddedListener, mLocalVideoViewAdded, mRemoteVideoViewAdded, isMute, alphaInvisible, logSaved;
@@ -117,208 +129,205 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     private Sensor mProximity;
     private Map<String, TextureView> viewMap;
     private List<String> streamIdList;
-    IZegoEventHandler eventHandler = new IZegoEventHandler() {
-
+    private String receiverToken, roomToken;
+    private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
         @Override
-        public void onRoomStreamUpdate(String roomID, ZegoUpdateType updateType, ArrayList<ZegoStream> streamList, JSONObject extendedData) {
-            super.onRoomStreamUpdate(roomID, updateType, streamList, extendedData);
-            Log.i("clima", "🚩 🚪 addedd " +
-                    streamList.size());
-            if (updateType == ZegoUpdateType.ADD) {
-                if (isVideoCall) {
-                    if (!isAll) {
-                        remoteVideo2.setVisibility(View.GONE);
-                        scrollView.setVisibility(View.VISIBLE);
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                            remoteVideo.removeAllViews();
-                            remoteVideo.addView(gridLayout);
-                            initGridLayout();
-                        }
-
-                        ZegoCanvas zegoCanvas = new ZegoCanvas(localTextureView);
-                        zegoCanvas.viewMode = ZegoViewMode.ASPECT_FILL;
-                        streamIdList.add(streamID);
-                        viewMap.put(streamID, localTextureView);
-
-                        zegoExpressEngine.startPlayingStream(streamID, zegoCanvas);
-
-                        isAll = true;
+        public void onRtcStats(RtcStats stats) {
+            super.onRtcStats(stats);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    counter = stats.users;
+                    if (isConnected) {
+                        if (stats.users <= 1)
+                            endCall();
                     }
-
-                    for (ZegoStream zegoStream : streamList) {
-
-                        TextureView addTextureView = new TextureView(GroupCallActivity.this);
-                        int row = streamIdList.size() / 2;
-                        int column = streamIdList.size() % 2;
-                        addToGridLayout(row, column, addTextureView);
-                        viewMap.put(zegoStream.streamID, addTextureView);
-                        streamIdList.add(zegoStream.streamID);
-                        ZegoCanvas zegoCanvas = new ZegoCanvas(addTextureView);
-                        zegoCanvas.viewMode = ZegoViewMode.ASPECT_FILL;
-                        zegoExpressEngine.startPlayingStream(zegoStream.streamID, zegoCanvas);
+                    if (stats.users > 1) {
+                        mAudioPlayer.stopProgressTone();
+                        //if (!isVideoCall)
+                        //zegoExpressEngine.startPlayingStream(streamID, new ZegoCanvas(null));
+                        mCallerName.setText(stats.users + " People");
+                        isConnected = true;
                     }
-
+                    Toast.makeText(GroupCallActivity.this, "users " + stats.users, Toast.LENGTH_SHORT).show();
                 }
-
-            } else if (updateType == ZegoUpdateType.DELETE) {
-                Log.i("clima", "🚩 🚪 del stream ");
-                //if (!inOrOut.equals("IN")) {
-                for (ZegoStream zegoStream : streamList) {
-                    zegoExpressEngine.stopPlayingStream(zegoStream.streamID);
-                    streamIdList.remove(zegoStream.streamID);
-                    notifyGridLayout();
-                    viewMap.remove(zegoStream.streamID);
-                }
-                //}
-            }
+            });
         }
 
+        @Override
+        public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
+            super.onJoinChannelSuccess(channel, uid, elapsed);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    isLoggedIn = true;
+                    if (!isVideoCall)
+                        setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
+                    else
+                        setVolumeControlStream(AudioManager.STREAM_SYSTEM);
+
+
+                    if (!inOrOut.equals("IN")) {
+                        mAudioPlayer.playProgressTone();
+                        pushNotification(false);
+                    }
+                    //Toast.makeText(CallScreenActivity.this, "onJOinChannel", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
 
         @Override
-        public void onRoomUserUpdate(String roomID, ZegoUpdateType updateType, ArrayList<ZegoUser> userList) {
-            super.onRoomUserUpdate(roomID, updateType, userList);
-
-            if (ZegoUpdateType.ADD == updateType) {
-                counter = counter + 1;
-                Log.i("clima", "🚩 🚪 added ");
-
-                if (!isConnected) {
-                    mAudioPlayer.stopProgressTone();
+        public void onUserJoined(int uid, int elapsed) {
+            super.onUserJoined(uid, elapsed);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    isLoggedIn = true;
 
                     if (!isVideoCall)
-                        zegoExpressEngine.startPlayingStream(streamID, new ZegoCanvas(null));
-                   // Toast.makeText(GroupCallActivity.this, "Connected", Toast.LENGTH_SHORT).show();
-                    myTxtCalling.setText(getResources().getString(R.string.app_name) + " Call Connected");
+                        setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
+                    else
+                        setVolumeControlStream(AudioManager.STREAM_SYSTEM);
 
-                    mCallDuration.setVisibility(View.VISIBLE);
-                    mCallDuration.setFormat("%02d:%02d");
-                    mCallDuration.setBase(SystemClock.elapsedRealtime());
-                    //mCallDuration.setText("Connected");
-                    mCallDuration.start();
-                }
-                isConnected = true;
+                    mAudioPlayer.stopProgressTone();
+                    if (!isVideoCall)
+                        if (!mRtcEngine.isSpeakerphoneEnabled())
+                            setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
 
-                if (counter > 1) {
-                    try {
-                        userCall.child(userList.get(counter).userID).removeValue();
-                        callLog = callLog + " " + userList.get(counter).userID.toString();
-                    } catch (Exception e) {
-                    }
-                }
+                    //Toast.makeText(CallScreenActivity.this, "onUersJoined", Toast.LENGTH_SHORT).show();
 
-            } else if (ZegoUpdateType.DELETE == updateType) {
-                Log.i("clima", "🚩 🚪 del ");
-                int temp = counter - 1;
-                counter = counter - 1;
-                if (isConnected) {
-                    //mCallerName.setText(counter + " People");
-                    if (temp <= 1) {
+                    //Toast.makeText(CallScreenActivity.this, "Connected", Toast.LENGTH_SHORT).show();
+
+                    if (!isConnected) {
+                        //    mAudioPlayer.stopProgressTone();
+
                         if (!isVideoCall)
-                            zegoExpressEngine.startPlayingStream(streamID, new ZegoCanvas(null));
-                        Log.i("clima", "🚩 🚪 del last " + roomID);
-                        endCall();
+                            //zegoExpressEngine.startPlayingStream(streamID, new ZegoCanvas(null));
+                            // Toast.makeText(GroupCallActivity.this, "Connected", Toast.LENGTH_SHORT).show();
+                            myTxtCalling.setText(getResources().getString(R.string.app_name) + " Call Connected");
+
+                        mCallDuration.setVisibility(View.VISIBLE);
+                        mCallDuration.setFormat("%02d:%02d");
+                        mCallDuration.setBase(SystemClock.elapsedRealtime());
+                        //mCallDuration.setText("Connected");
+                        mCallDuration.start();
                     }
+                    isConnected = true;
+
+//                    if (counter > 1) {
+//                        try {
+//                            userCall.child(userList.get(counter).userID).removeValue();
+//                            callLog = callLog + " " + userList.get(counter).userID;
+//                        } catch (Exception e) {
+//                        }
+//                    }
+
+
+//                    myTxtCalling.setText(getResources().getString(R.string.app_name) + " Call Connected");
+//                    mCallDuration.setVisibility(View.VISIBLE);
+//                    mCallDuration.setFormat("%02d:%02d");
+//                    mCallDuration.setBase(SystemClock.elapsedRealtime());
+//                    //mCallDuration.setText("Connected");
+//                    mCallDuration.start();
+//                    isConnected = true;
+//
+//                    if (isVideoCall) {
+//                        remoteVideo.removeAllViews();
+//                        remoteVideo.setVisibility(View.VISIBLE);
+//                        mRemoteView = RtcEngine.CreateRendererView(getBaseContext());
+//                        mRemoteContainer.addView(mRemoteView);
+//                        mRtcEngine.setupRemoteVideo(new VideoCanvas(mRemoteView, VideoCanvas.RENDER_MODE_HIDDEN, uid));
+//                        remoteVideo.addView(mRemoteContainer);
+//
+//                        localVideo.removeAllViews();
+//                        localVideo.addView(mLocalContainer);
+//                        localVideo.setVisibility(View.VISIBLE);
+//                    }
+
+//                    if (updateType == ZegoUpdateType.ADD) {
+//                        if (isVideoCall) {
+//                            if (!isAll) {
+//                                remoteVideo2.setVisibility(View.GONE);
+//                                scrollView.setVisibility(View.VISIBLE);
+//                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+//                                    remoteVideo.removeAllViews();
+//                                    remoteVideo.addView(gridLayout);
+//                                    initGridLayout();
+//                                }
+//
+//                                ZegoCanvas zegoCanvas = new ZegoCanvas(localTextureView);
+//                                zegoCanvas.viewMode = ZegoViewMode.ASPECT_FILL;
+//                                streamIdList.add(streamID);
+//                                viewMap.put(streamID, localTextureView);
+//
+//                                zegoExpressEngine.startPlayingStream(streamID, zegoCanvas);
+//
+//                                isAll = true;
+//                            }
+//
+//                            for (ZegoStream zegoStream : streamList) {
+//
+//                                TextureView addTextureView = new TextureView(GroupCallActivity.this);
+//                                int row = streamIdList.size() / 2;
+//                                int column = streamIdList.size() % 2;
+//                                addToGridLayout(row, column, addTextureView);
+//                                viewMap.put(zegoStream.streamID, addTextureView);
+//                                streamIdList.add(zegoStream.streamID);
+//                                ZegoCanvas zegoCanvas = new ZegoCanvas(addTextureView);
+//                                zegoCanvas.viewMode = ZegoViewMode.ASPECT_FILL;
+//                                zegoExpressEngine.startPlayingStream(zegoStream.streamID, zegoCanvas);
+//                            }
+//
+//                        }
+//
+//                    } else if (updateType == ZegoUpdateType.DELETE) {
+//                        Log.i("clima", "🚩 🚪 del stream ");
+//                        //if (!inOrOut.equals("IN")) {
+//                        for (ZegoStream zegoStream : streamList) {
+//                            zegoExpressEngine.stopPlayingStream(zegoStream.streamID);
+//                            streamIdList.remove(zegoStream.streamID);
+//                            notifyGridLayout();
+//                            viewMap.remove(zegoStream.streamID);
+//                        }
+//                        //}
+                    // }
                 }
-
-            }
-            try {
-                mCallerName.setText(counter + " People");
-            } catch (Exception e) {
-            }
-        }
-
-        @Override
-        public void onRoomStateUpdate(String roomID, ZegoRoomState state, int errorCode, JSONObject extendedData) {
-            if (state == ZegoRoomState.CONNECTED && errorCode == 0) {
-                Log.i("clima", "🚩 🚪 Login room success");
-                isLoggedIn = true;
-
-                if (!isVideoCall)
-                    setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
-                else
-                    setVolumeControlStream(AudioManager.STREAM_SYSTEM);
-
-                if (!inOrOut.equals("IN"))
-                    mAudioPlayer.playProgressTone();
-
-            }
-
-            if (errorCode != 0) {
-
-                Log.i("clima", "🚩 ❌ 🚪 Login room fail, errorCode: " + errorCode);
-                isLoggedIn = false;
-
-                endCall();
-
-            }
+            });
         }
 
 
         @Override
-        public void onRoomOnlineUserCountUpdate(String roomID, int count) {
-            Log.i("clima", "🚩 users,  " + count);
-            super.onRoomOnlineUserCountUpdate(roomID, count);
+        public void onUserOffline(final int uid, final int reason) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
 
-            counter = count;
-            if (isConnected) {
-                if (count <= 1)
-                    endCall();
-            }
-            if (count > 1) {
-                mAudioPlayer.stopProgressTone();
-                if (!isVideoCall)
-                    zegoExpressEngine.startPlayingStream(streamID, new ZegoCanvas(null));
-                mCallerName.setText(count + " People");
-                isConnected = true;
-            }
-        }
-
-        @Override
-        public void onPublisherStateUpdate(String streamID, ZegoPublisherState state, int errorCode, JSONObject extendedData) {
-            if (state == ZegoPublisherState.PUBLISHING && errorCode == 0) {
-                Log.i("clima", "🚩 📤 Publishing stream success");
-            }
-
-            if (errorCode != 0) {
-                Log.i("clima", "🚩 ❌ 📤 Publishing stream fail, errorCode: " + errorCode);
-            }
-        }
-
-        @Override
-        public void onPlayerStateUpdate(String streamID, ZegoPlayerState state, int errorCode, JSONObject extendedData) {
-            if (state == ZegoPlayerState.PLAYING && errorCode == 0) {
-                Log.i("clima", "🚩 📥 Playing stream success");
-                mAudioPlayer.stopProgressTone();
-                if (!isVideoCall)
-                    setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
-            }
-
-            if (errorCode != 0) {
-
-                Log.i("clima", "🚩 ❌ 📥 Playing stream fail, errorCode: " + errorCode);
-            }
+                }
+            });
         }
 
 
     };
 
-    public static Intent newIntent(Context context, Group user, String callId, String inOrOut, boolean isVideoCall) {
+    public static Intent newIntent(Context context, Group user, String callId, String inOrOut, boolean callIsVideo, String token, String roomToken) {
         Intent intent = new Intent(context, GroupCallActivity.class);
         intent.putExtra(EXTRA_DATA_USER, user);
         intent.putExtra(EXTRA_DATA_IN_OR_OUT, inOrOut);
-        intent.putExtra(SinchService.CALL_ID, callId);
-        intent.putExtra("isVideoCall", isVideoCall);
+        intent.putExtra("CALL_ID", callId);
+        intent.putExtra("isVideoCall", callIsVideo);
+        intent.putExtra("token", token);
+        intent.putExtra("room_token", roomToken);
 
         return intent;
     }
 
-    public static Intent newIntent(Context context, String callId, String inOrOut) {
-        Intent intent = new Intent(context, GroupCallActivity.class);
-
-        intent.putExtra(EXTRA_DATA_IN_OR_OUT, inOrOut);
-        intent.putExtra(SinchService.CALL_ID, callId);
-        return intent;
-    }
+//    public static Intent newIntent(Context context, String callId, String inOrOut) {
+//        Intent intent = new Intent(context, GroupCallActivity.class);
+//
+//        intent.putExtra(EXTRA_DATA_IN_OR_OUT, inOrOut);
+//        intent.putExtra("CALL_ID", callId);
+//        return intent;
+//    }
 
     @SuppressLint("InvalidWakeLockTag")
     @Override
@@ -370,8 +379,10 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_group_call);
 
-
-
+        mLocalContainer = new FrameLayout(this);
+        mRemoteContainer = new FrameLayout(this);
+        mRemoteView = new SurfaceView(this);
+        mLocalView = new SurfaceView(this);
         userCall = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mProximity = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
@@ -385,8 +396,11 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
         Intent intent = getIntent();
         group = intent.getParcelableExtra(EXTRA_DATA_USER);
-        mCallId = intent.getStringExtra(SinchService.CALL_ID);
+        mCallId = intent.getStringExtra("CALL_ID");
         inOrOut = intent.getStringExtra(EXTRA_DATA_IN_OR_OUT);
+        receiverToken = intent.getStringExtra("token");
+        //todo check
+        roomToken = intent.getStringExtra("room_token");
         isVideoCall = intent.getBooleanExtra("isVideoCall", false);
         mAudioPlayer = new AudioPlayer(this);
         mCallDuration = findViewById(R.id.callDuration);
@@ -523,13 +537,15 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         setVolumeControlStream(AudioManager.USE_DEFAULT_STREAM_TYPE);
 
         if (isLoggedIn) {
-            zegoExpressEngine.stopPlayingStream(streamID);
-            zegoExpressEngine.stopPublishingStream();
-            zegoExpressEngine.stopPreview();
-            zegoExpressEngine.logoutRoom(callRoomId);
+            RtcEngine.destroy();
+            mRtcEngine = null;
+//            zegoExpressEngine.stopPlayingStream(streamID);
+//            zegoExpressEngine.stopPublishingStream();
+//            zegoExpressEngine.stopPreview();
+//            zegoExpressEngine.logoutRoom(callRoomId);
         }
 
-        ZegoExpressEngine.destroyEngine(null);
+        //ZegoExpressEngine.destroyEngine(null);
 
         try {
             if (wlOff != null && wlOff.isHeld()) {
@@ -553,64 +569,64 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         mAudioPlayer.stopRingtone();
         //saveLog();
 
-        try {
-            if (!inOrOut.equals("IN")) {
-                DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
-                if (isConnected) {
-                    reference.child(userMe.getId()).removeValue();
-                } else {
-                    if (tempUser != null && !callLog.contains(tempUser.getId())) {
-                        HashMap<String, Object> datamap = new HashMap<>();
-                        datamap.put("name", group.getName());
-                        datamap.put("streamId", streamID);
-                        datamap.put("callerId", user.getId());
-                        datamap.put("answered", false);
-                        datamap.put("connected", isConnected);
-                        datamap.put("canceled", false);
-                        datamap.put("video", isVideoCall);
-                        datamap.put("uId", FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
-                        datamap.put("room", callRoomId);
-                        datamap.put("isGroup", true);
-                        reference.child(tempUser.getId()).setValue(datamap).addOnCompleteListener(new OnCompleteListener<Void>() {
-                            @Override
-                            public void onComplete(@NonNull Task<Void> task) {
-                                //Toast.makeText(GroupCallActivity.this, "updated", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                    }
-
-                    HashMap<String, Object> datamap = new HashMap<>();
-                    datamap.put("name", group.getName());
-                    datamap.put("streamId", streamID);
-                    datamap.put("callerId", user.getId());
-                    datamap.put("answered", false);
-                    datamap.put("connected", isConnected);
-                    datamap.put("canceled", false);
-                    datamap.put("video", isVideoCall);
-                    datamap.put("uId", FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
-                    datamap.put("room", callRoomId);
-                    datamap.put("isGroup", true);
-                    for (int i = 0; i < group.getUserIds().size(); i++) {
-
-                        if (!userMe.getId().equals(group.getUserIds().get(i)) && !callLog.contains(group.getUserIds().get(i))) {
-
-                            reference.child(group.getUserIds().get(i).toString()).setValue(datamap).addOnCompleteListener(new OnCompleteListener<Void>() {
-                                @Override
-                                public void onComplete(@NonNull Task<Void> task) {
-                                    //Toast.makeText(GroupCallActivity.this, "updated", Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                        }
-                    }
-
-
-                }
-            } else {
-                DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
-                reference.removeValue();
-            }
-        } catch (Exception e) {
-        }
+//        try {
+//            if (!inOrOut.equals("IN")) {
+//                DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
+//                if (isConnected) {
+//                    reference.child(userMe.getId()).removeValue();
+//                } else {
+//                    if (tempUser != null && !callLog.contains(tempUser.getId())) {
+//                        HashMap<String, Object> datamap = new HashMap<>();
+//                        datamap.put("name", group.getName());
+//                        datamap.put("streamId", streamID);
+//                        datamap.put("callerId", user.getId());
+//                        datamap.put("answered", false);
+//                        datamap.put("connected", isConnected);
+//                        datamap.put("canceled", false);
+//                        datamap.put("video", isVideoCall);
+//                        datamap.put("uId", FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+//                        datamap.put("room", callRoomId);
+//                        datamap.put("isGroup", true);
+//                        reference.child(tempUser.getId()).setValue(datamap).addOnCompleteListener(new OnCompleteListener<Void>() {
+//                            @Override
+//                            public void onComplete(@NonNull Task<Void> task) {
+//                                //Toast.makeText(GroupCallActivity.this, "updated", Toast.LENGTH_SHORT).show();
+//                            }
+//                        });
+//                    }
+//
+//                    HashMap<String, Object> datamap = new HashMap<>();
+//                    datamap.put("name", group.getName());
+//                    datamap.put("streamId", streamID);
+//                    datamap.put("callerId", user.getId());
+//                    datamap.put("answered", false);
+//                    datamap.put("connected", isConnected);
+//                    datamap.put("canceled", false);
+//                    datamap.put("video", isVideoCall);
+//                    datamap.put("uId", FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+//                    datamap.put("room", callRoomId);
+//                    datamap.put("isGroup", true);
+//                    for (int i = 0; i < group.getUserIds().size(); i++) {
+//
+//                        if (!userMe.getId().equals(group.getUserIds().get(i)) && !callLog.contains(group.getUserIds().get(i))) {
+//
+//                            reference.child(group.getUserIds().get(i)).setValue(datamap).addOnCompleteListener(new OnCompleteListener<Void>() {
+//                                @Override
+//                                public void onComplete(@NonNull Task<Void> task) {
+//                                    //Toast.makeText(GroupCallActivity.this, "updated", Toast.LENGTH_SHORT).show();
+//                                }
+//                            });
+//                        }
+//                    }
+//
+//
+//                }
+//            } else {
+//                DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
+//                reference.removeValue();
+//            }
+//        } catch (Exception e) {
+//        }
         finish();
     }
 
@@ -623,7 +639,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             logSaved = true;
         }
     }
-
 
     public void addToGridLayout(int row, int column, TextureView textureView) {
 
@@ -646,7 +661,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         gridLayout.addView(textureView, params);
     }
 
-
     private void notifyGridLayout() {
         int j = 0;
         gridLayout.removeAllViews();
@@ -658,7 +672,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         }
     }
 
-
     private void initGridLayout() {
         gridLayout.setRowCount(4);
         gridLayout.setColumnCount(3);
@@ -666,25 +679,56 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     }
 
     void onZegoCreated() {
+        if (isVideoCall && !checkSelfPermission(REQUESTED_PERMISSIONS[0], PERMISSION_REQ_ID) &&
+                checkSelfPermission(REQUESTED_PERMISSIONS[1], PERMISSION_REQ_ID) &&
+                checkSelfPermission(REQUESTED_PERMISSIONS[2], PERMISSION_REQ_ID)) {
+            Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        } else if (!checkSelfPermission(Manifest.permission.RECORD_AUDIO, PERMISSION_REQ_ID_RECORD_AUDIO)) {
+            Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
 
-        zegoExpressEngine = ZegoExpressEngine.createEngine(Utils.appID, Utils.appSign, Utils.isTestEnv, ZegoScenario.COMMUNICATION, getApplication(), eventHandler);
+        try {
+            mRtcEngine = RtcEngine.create(getBaseContext(), Utils.appID2, mRtcEventHandler);
+            mRtcEngine.setChannelProfile(Constants.CHANNEL_PROFILE_COMMUNICATION);
+        } catch (Exception e) {
+            Log.e("clima e", Log.getStackTraceString(e));
+            Toast.makeText(this, "NEED TO check rtc sdk init fatal error", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        String accessToken = Utils.token;
+
+        mRtcEngine.joinChannel(accessToken, "testChannel", "Extra Optional Data", 0);
+        //zegoExpressEngine = ZegoExpressEngine.createEngine(Utils.appID, Utils.appSign, Utils.isTestEnv, ZegoScenario.COMMUNICATION, getApplication(), eventHandler);
         if (isVideoCall) {
-            zegoExpressEngine.enableCamera(true);
-            zegoExpressEngine.muteMicrophone(false);
-            zegoExpressEngine.muteSpeaker(false);
             setVolumeControlStream(AudioManager.STREAM_SYSTEM);
-
+            isSpeaker = true;
+            mRtcEngine.enableVideo();
+            // Create a SurfaceView object.
+            remoteVideo.removeAllViews();
+            mLocalView = RtcEngine.CreateRendererView(getBaseContext());
+            mLocalView.setZOrderMediaOverlay(true);
+            mLocalContainer.addView(mLocalView);
+            remoteVideo.addView(mLocalContainer);
+            VideoCanvas localVideoCanvas = new VideoCanvas(mLocalView, VideoCanvas.RENDER_MODE_HIDDEN, 0);
+            mRtcEngine.setupLocalVideo(localVideoCanvas);
 
             viewMap = new HashMap<>();
             streamIdList = new ArrayList<>();
             gridLayout = new GridLayout(this);
 
         } else {
-            zegoExpressEngine.enableCamera(false);
-            zegoExpressEngine.setAudioRouteToSpeaker(false);
+            mRtcEngine.disableVideo();
             setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
         }
 
+        isMute();
+        enableSpeaker(isSpeaker);
 
         String randomSuffix = String.valueOf(new Date().getTime() % (new Date().getTime() / 1000));
 
@@ -694,9 +738,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             callRoomId = MainActivity.RoomId;
         }
 
-
-        isMute();
-        enableSpeaker(isSpeaker);
 
         if (!isVideoCall && !inOrOut.equals("IN"))
             streamID = userMe.getId();
@@ -709,31 +750,31 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
 
         if (isVideoCall) {
-            remoteVideo2.setVisibility(View.VISIBLE);
-            remoteVideo2.removeAllViews();
-            remoteVideo2.addView(gridTextureView);
-
-            ZegoCanvas zegoCanvas = new ZegoCanvas(gridTextureView);
-            zegoCanvas.viewMode = ZegoViewMode.ASPECT_FILL;
-            zegoExpressEngine.startPreview(zegoCanvas);
+//            remoteVideo2.setVisibility(View.VISIBLE);
+//            remoteVideo2.removeAllViews();
+//            remoteVideo2.addView(gridTextureView);
+//
+//            ZegoCanvas zegoCanvas = new ZegoCanvas(gridTextureView);
+//            zegoCanvas.viewMode = ZegoViewMode.ASPECT_FILL;
+//            zegoExpressEngine.startPreview(zegoCanvas);
         }
 
-        ZegoRoomConfig config = new ZegoRoomConfig();
-        config.isUserStatusNotify = true;
-        config.maxMemberCount = 8;
-        ZegoUser userZego = new ZegoUser(userMe.getId(), userMe.getName());
-
-        zegoExpressEngine.loginRoom(callRoomId, userZego, config);
+//        ZegoRoomConfig config = new ZegoRoomConfig();
+//        config.isUserStatusNotify = true;
+//        config.maxMemberCount = 8;
+//        ZegoUser userZego = new ZegoUser(userMe.getId(), userMe.getName());
+//
+//        zegoExpressEngine.loginRoom(callRoomId, userZego, config);
 
         if (isVideoCall) {
-            zegoExpressEngine.startPublishingStream(streamID);
+            //  zegoExpressEngine.startPublishingStream(streamID);
         }
 
 
         if (!inOrOut.equals("IN")) {
 
-            if (!isVideoCall)
-                zegoExpressEngine.startPublishingStream(streamID);
+//            if (!isVideoCall)
+//                zegoExpressEngine.startPublishingStream(streamID);
 
             String phNO = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
 
@@ -807,6 +848,61 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         updateUI();
     }
 
+    private void pushNotification(boolean isMissedCall) {
+        try {
+            String token = FirebaseInstanceId.getInstance().getToken();
+            Log.d("clima", token);
+            RequestQueue queue = Volley.newRequestQueue(this);
+
+            String url = "https://fcm.googleapis.com/fcm/send";
+
+            JSONObject notificationObject = new JSONObject();
+            notificationObject.put("title", isVideoCall ? "Video Call" : "Voice Call");
+            notificationObject.put("body", userMe.getId() + " is calling you");
+            Toast.makeText(this, "user" + group.getName(), Toast.LENGTH_SHORT).show();
+            JSONObject dataObj = new JSONObject();
+            dataObj.put("is_video", isVideoCall);
+            dataObj.put("is_group", true);
+            dataObj.put("is_call", true);
+            dataObj.put("room_id", callRoomId);
+            dataObj.put("room_token", "accessToken");
+            dataObj.put("missed_call", isMissedCall);
+            dataObj.put("caller_id", group.getId());
+            dataObj.put("caller_name", group.getName());
+
+            receiverToken = "dSVUQDBjym8:APA91bFAIdeIWwPe97IugDlIpLf24bG5AQ4K0zLFqQoDN5xL307qaTaZjSfQJPAo-uQ_OKzr_hEghvKwv05eUZwpBN3wlKh_0sG6FrmZblEB2Qsrh9qV7NsZDYoPHMyTXa0A49KSeWeQ";
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("notification", notificationObject);
+            jsonObject.put("data", dataObj);
+            jsonObject.put("to", receiverToken);
+
+            JsonObjectRequest request = new JsonObjectRequest(url, jsonObject, new Response.Listener<JSONObject>() {
+                @Override
+                public void onResponse(JSONObject response) {
+                    Log.d("clima", response.toString());
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.d("clima", error.getMessage());
+                }
+            }) {
+                @Override
+                public Map<String, String> getHeaders() {
+                    String api_key_header_value = "key=AAAAn4Y4Ciw:APA91bHAgDKs1SakEKc-cdMI4LYz7G8O3IZ6odbpKU8h5tu0SmyICpeOhMFeBnwdOsccZVmUDuwZ245PWt_kk09E2fnS78VelY_JbaJ1XtJVNl4Na6QCioeXSoFS4kMvlDHzJ9EJvX1Q";
+                    Map<String, String> headers = new HashMap<>();
+                    headers.put("Content-Type", "application/json");
+                    headers.put("Authorization", api_key_header_value);
+                    return headers;
+                }
+            };
+
+            queue.add(request);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     void updateUI() {
         if (callRoomId != null) {
@@ -825,8 +921,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         switchVideo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                useFrontCamera = !useFrontCamera;
-                zegoExpressEngine.useFrontCamera(useFrontCamera);
+                mRtcEngine.switchCamera();
             }
         });
     }
@@ -848,24 +943,17 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     }
 
     private void enableSpeaker(boolean enable) {
+        mRtcEngine.setEnableSpeakerphone(enable);
         if (isVideoCall)
-            zegoExpressEngine.muteSpeaker(enable);
+            switchVolume.setImageDrawable(ContextCompat.getDrawable(this, enable ? R.drawable.ic_speaker : R.drawable.ic_speaker_off));
         else
-            zegoExpressEngine.setAudioRouteToSpeaker(enable);
-
-        switchVolume.setImageDrawable(ContextCompat.getDrawable(this, !isSpeaker ? R.drawable.ic_speaker : R.drawable.ic_speaker_off));
+            switchVolume.setImageDrawable(ContextCompat.getDrawable(this, !enable ? R.drawable.ic_speaker : R.drawable.ic_speaker_off));
     }
 
     private void isMute() {
-        if (isMute) {
-            zegoExpressEngine.muteMicrophone(true);
-            switchMic.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic_off));
-        } else {
-            zegoExpressEngine.muteMicrophone(false);
-            switchMic.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic_on));
-        }
+        switchMic.setImageDrawable(ContextCompat.getDrawable(this, isMute ? R.drawable.ic_mic_off : R.drawable.ic_mic_on));
+        mRtcEngine.muteLocalAudioStream(isMute);
     }
-
 
     @Override
     void myUsersResult(ArrayList<User> myUsers) {
@@ -905,5 +993,19 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     @Override
     void statusUpdated(Status status) {
 
+    }
+
+    public boolean checkSelfPermission(String permission, int requestCode) {
+        Log.i("clima", "checkSelfPermission " + permission + " " + requestCode);
+        if (ContextCompat.checkSelfPermission(this,
+                permission)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{permission},
+                    requestCode);
+            return false;
+        }
+        return true;
     }
 }

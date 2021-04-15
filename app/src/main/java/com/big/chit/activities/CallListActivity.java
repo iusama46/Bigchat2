@@ -36,6 +36,8 @@ import java.util.ArrayList;
 
 public class CallListActivity extends BaseActivity {
     private final int CONTACTS_REQUEST_CODE = 321;
+    boolean isTokenReceived = false;
+    String token = "";
     private ArrayList<User> myUsers = new ArrayList<>();
     private SwipeRefreshLayout swipeMenuRecyclerView;
     private SearchView searchView;
@@ -44,7 +46,6 @@ public class CallListActivity extends BaseActivity {
     private ImageView back_button;
     private TextView title;
     private Helper helper;
-
 
     @Override
     void myUsersResult(ArrayList<User> myUsers) {
@@ -109,8 +110,6 @@ public class CallListActivity extends BaseActivity {
     void statusUpdated(Status status) {
 
     }
-boolean isTokenReceived=false;
-    String token="";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -119,7 +118,7 @@ boolean isTokenReceived=false;
 
         uiInit();
 
-            DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
+        DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
         try {
             reference.child("token").addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
@@ -137,7 +136,7 @@ boolean isTokenReceived=false;
 
                 }
             });
-        }catch (Exception e){
+        } catch (Exception e) {
             Log.d("clima", e.getMessage());
 
         }
@@ -241,13 +240,12 @@ boolean isTokenReceived=false;
                     Toast.makeText(this, "Service is not started. Try stopping the service and starting it again before placing a call.", Toast.LENGTH_LONG).show();
                     return;
                 }
-                if(!isTokenReceived)
-                {
+                if (!isTokenReceived) {
                     Toast.makeText(this, "Unable to make call", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                startActivity(CallScreenActivity.newIntent(this, user,  "OUT", callIsVideo, token));
+                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, token,"token"));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());
                 //ActivityCompat.requestPermissions(this, new String[]{e.getRequiredPermission()}, 0);

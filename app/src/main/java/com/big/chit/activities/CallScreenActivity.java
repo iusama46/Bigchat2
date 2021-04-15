@@ -1,8 +1,10 @@
 package com.big.chit.activities;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -12,12 +14,14 @@ import android.os.Bundle;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
-import android.view.TextureView;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
 import android.widget.Chronometer;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -56,21 +60,13 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import im.zego.zegoexpress.ZegoExpressEngine;
-import im.zego.zegoexpress.callback.IZegoEventHandler;
-import im.zego.zegoexpress.constants.ZegoPlayerState;
-import im.zego.zegoexpress.constants.ZegoPublisherState;
-import im.zego.zegoexpress.constants.ZegoRoomState;
-import im.zego.zegoexpress.constants.ZegoScenario;
-import im.zego.zegoexpress.constants.ZegoUpdateType;
-import im.zego.zegoexpress.constants.ZegoViewMode;
-import im.zego.zegoexpress.entity.ZegoCanvas;
-import im.zego.zegoexpress.entity.ZegoRoomConfig;
-import im.zego.zegoexpress.entity.ZegoStream;
-import im.zego.zegoexpress.entity.ZegoUser;
+import io.agora.rtc.Constants;
+import io.agora.rtc.IRtcEngineEventHandler;
+import io.agora.rtc.RtcEngine;
+import io.agora.rtc.video.VideoCanvas;
 
 /**
- * Zego Calling SDK Added by Ussama Iftikhar on 03-April-2021.
+ * Agora Calling SDK Added by Ussama Iftikhar on 12-April-2021.
  * Email iusama46@gmail.com
  * Email iusama466@gmail.com
  * Github https://github.com/iusama46
@@ -82,11 +78,16 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
     private static final String EXTRA_DATA_USER = "extradatauser";
     private static final String EXTRA_DATA_IN_OR_OUT = "extradatainorout";
-    private final int mCallDurationSecond = 0;
+    private static final int PERMISSION_REQ_ID_RECORD_AUDIO = 22;
+    private static final String[] REQUESTED_PERMISSIONS = {
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.CAMERA,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
+    private static final int PERMISSION_REQ_ID = 22;
 
     String callRoomId = "room";
     PowerManager.WakeLock wlOff = null, wlOn = null;
-    ZegoExpressEngine zegoExpressEngine;
     boolean isConnected = false;
     String streamID;
     boolean isSpeaker = false;
@@ -94,68 +95,75 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     boolean isLoggedIn = false;
     DatabaseReference referenceDb;
     boolean isVideoCall;
-    TextureView textureView;
-    boolean useFrontCamera = true;
     String receiverToken = "";
     String inComingCallerID = "";
     String inComingRoomID = "";
+    FrameLayout mLocalContainer, mRemoteContainer;
+    SurfaceView mLocalView, mRemoteView;
     private Chronometer mCallDuration;
     private AudioPlayer mAudioPlayer;
     private String inOrOut;
-    private boolean mAddedListener, mLocalVideoViewAdded, mRemoteVideoViewAdded, isMute, alphaInvisible, logSaved;
+    private boolean mAddedListener, isMute, alphaInvisible, logSaved;
     private RelativeLayout myCallScreenRootRLY;
     private TextView mCallState, mCallerName, myTxtCalling;
     private ImageView userImage1, userImage2, switchVideo, switchMic, switchVolume;
     private View tintBlue, bottomButtons;
     private RelativeLayout localVideo, remoteVideo;
-    IZegoEventHandler eventHandler = new IZegoEventHandler() {
+    private LinearLayout mySwitchCameraLLY;
+    private SensorManager mSensorManager;
+    private Sensor mProximity;
+
+    private RtcEngine mRtcEngine;
+    private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
         @Override
-        public void onRoomStreamUpdate(String roomID, ZegoUpdateType updateType, ArrayList<ZegoStream> streamList, JSONObject extendedData) {
-            super.onRoomStreamUpdate(roomID, updateType, streamList, extendedData);
-            Log.i("clima", "🚩 🚪 addedd " +
-                    streamList.size());
+        public void onRtcStats(RtcStats stats) {
+            super.onRtcStats(stats);
 
-            TextureView addTextureView = new TextureView(CallScreenActivity.this);
-            TextureView add2TextureView = new TextureView(CallScreenActivity.this);
-
-            if (updateType == ZegoUpdateType.ADD) {
-                if (isVideoCall) {
-
-                    if (streamList.isEmpty())
-                        return;
-                    remoteVideo.removeAllViews();
-                    remoteVideo.addView(addTextureView);
-                    remoteVideo.setVisibility(View.VISIBLE);
-                    ZegoCanvas canvas = new ZegoCanvas(addTextureView);
-                    canvas.viewMode = ZegoViewMode.ASPECT_FILL;
-                    zegoExpressEngine.startPlayingStream(streamList.get(0).streamID, canvas);
-
-                    localVideo.removeAllViews();
-                    localVideo.addView(add2TextureView);
-                    localVideo.setVisibility(View.VISIBLE);
-                    ZegoCanvas zegoCanvas = new ZegoCanvas(add2TextureView);
-                    zegoCanvas.viewMode = ZegoViewMode.ASPECT_FILL;
-                    zegoExpressEngine.startPlayingStream(streamID, zegoCanvas);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(CallScreenActivity.this, "users " + stats.users, Toast.LENGTH_SHORT).show();
                 }
-
-            } else if (updateType == ZegoUpdateType.DELETE) {
-                Log.i("clima", "🚩 🚪 del stream ");
-            }
+            });
         }
 
 
+
         @Override
-        public void onRoomUserUpdate(String roomID, ZegoUpdateType updateType, ArrayList<ZegoUser> userList) {
-            super.onRoomUserUpdate(roomID, updateType, userList);
+        public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
+            super.onJoinChannelSuccess(channel, uid, elapsed);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
 
-            if (ZegoUpdateType.ADD == updateType) {
+                    isLoggedIn = true;
+//                    if (!isVideoCall)
+//                        setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
+//                    else
+//                        setVolumeControlStream(AudioManager.STREAM_SYSTEM);
 
-                Log.i("clima", "🚩 🚪 added ");
-                if (!isConnected) {
+                    if (!inOrOut.equals("IN")) {
+                        mAudioPlayer.playProgressTone();
+                        pushNotification(false);
+                    }
+                    Toast.makeText(CallScreenActivity.this, "onJOinChannel", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        @Override
+        public void onUserJoined(int uid, int elapsed) {
+            super.onUserJoined(uid, elapsed);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
                     mAudioPlayer.stopProgressTone();
-
                     if (!isVideoCall)
-                        zegoExpressEngine.startPlayingStream(streamID, new ZegoCanvas(null));
+                        if (!mRtcEngine.isSpeakerphoneEnabled())
+                            setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
+
+                    Toast.makeText(CallScreenActivity.this, "onUersJoined", Toast.LENGTH_SHORT).show();
+
                     //Toast.makeText(CallScreenActivity.this, "Connected", Toast.LENGTH_SHORT).show();
                     myTxtCalling.setText(getResources().getString(R.string.app_name) + " Call Connected");
 
@@ -164,94 +172,55 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
                     mCallDuration.setBase(SystemClock.elapsedRealtime());
                     //mCallDuration.setText("Connected");
                     mCallDuration.start();
+                    isConnected = true;
+
+                    if (isVideoCall) {
+                        remoteVideo.removeAllViews();
+                        remoteVideo.setVisibility(View.VISIBLE);
+                        mRemoteView = RtcEngine.CreateRendererView(getBaseContext());
+                        mRemoteContainer.addView(mRemoteView);
+                        mRtcEngine.setupRemoteVideo(new VideoCanvas(mRemoteView, VideoCanvas.RENDER_MODE_HIDDEN, uid));
+                        remoteVideo.addView(mRemoteContainer);
+
+                        localVideo.removeAllViews();
+                        localVideo.addView(mLocalContainer);
+                        localVideo.setVisibility(View.VISIBLE);
+                    }
                 }
-                isConnected = true;
-
-            } else if (ZegoUpdateType.DELETE == updateType) {
-                Log.i("clima", "🚩 🚪 del ");
-                if (!isVideoCall)
-                    zegoExpressEngine.stopPlayingStream(streamID);
-                endCall();
-            }
-
-
+            });
         }
 
+
         @Override
-        public void onRoomStateUpdate(String roomID, ZegoRoomState state, int errorCode, JSONObject extendedData) {
-            if (state == ZegoRoomState.CONNECTED && errorCode == 0) {
-                Log.i("clima", "🚩 🚪 Login room success");
-                isLoggedIn = true;
-
-                if (!isVideoCall)
-                    setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
-                else
-                    setVolumeControlStream(AudioManager.STREAM_SYSTEM);
-
-                if (!inOrOut.equals("IN")) {
-                    mAudioPlayer.playProgressTone();
-                    pushNotification(false);
+        public void onUserOffline(final int uid, final int reason) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    endCall();
                 }
-            }
-
-            if (errorCode != 0) {
-                Toast.makeText(CallScreenActivity.this, "Unable to make Call", Toast.LENGTH_SHORT).show();
-                Log.i("clima", "🚩 ❌ 🚪 Login room fail, errorCode: " + errorCode);
-                isLoggedIn = false;
-
-                endCall();
-            }
+            });
         }
 
-
+        // Listen for the onUserMuterAudio callback.
+        // This callback occurs when a remote user stops sending the audio stream.
         @Override
-        public void onRoomOnlineUserCountUpdate(String roomID, int count) {
-            Log.i("clima", "🚩 users,  " + count);
-            super.onRoomOnlineUserCountUpdate(roomID, count);
+        public void onUserMuteAudio(final int uid, final boolean muted) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    //onRemoteUserVoiceMuted(uid, muted);
+                }
+            });
         }
-
-        @Override
-        public void onPublisherStateUpdate(String streamID, ZegoPublisherState state, int errorCode, JSONObject extendedData) {
-            if (state == ZegoPublisherState.PUBLISHING && errorCode == 0) {
-                Log.i("clima", "🚩 📤 Publishing stream success");
-            }
-
-            if (errorCode != 0) {
-                Log.i("clima", "🚩 ❌ 📤 Publishing stream fail, errorCode: " + errorCode);
-//                Toast.makeText(CallScreenActivity.this, "Unable to make Call", Toast.LENGTH_SHORT).show();
-//                mAudioPlayer.stopProgressTone();
-//                finish();
-
-            }
-        }
-
-        @Override
-        public void onPlayerStateUpdate(String streamID, ZegoPlayerState state, int errorCode, JSONObject extendedData) {
-            if (state == ZegoPlayerState.PLAYING && errorCode == 0) {
-                Log.i("clima", "🚩 📥 Playing stream success");
-                mAudioPlayer.stopProgressTone();
-                if (!isVideoCall)
-                    setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
-            }
-
-            if (errorCode != 0) {
-                Log.i("clima", "🚩 ❌ 📥 Playing stream fail, errorCode: " + errorCode);
-            }
-        }
-
-
     };
-    private LinearLayout mySwitchCameraLLY;
-    private SensorManager mSensorManager;
-    private Sensor mProximity;
 
-    public static Intent newIntent(Context context, User user, String inOrOut, boolean callIsVideo, String token) {
+    public static Intent newIntent(Context context, User user, String inOrOut, boolean callIsVideo, String token, String roomToken) {
         Intent intent = new Intent(context, CallScreenActivity.class);
         intent.putExtra(EXTRA_DATA_USER, user);
         intent.putExtra(EXTRA_DATA_IN_OR_OUT, inOrOut);
-
         intent.putExtra("callIsVideo", callIsVideo);
         intent.putExtra("token", token);
+        intent.putExtra("room_token", roomToken);
         return intent;
     }
 
@@ -300,10 +269,16 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         mAddedListener = savedInstanceState.getBoolean(ADDED_LISTENER);
     }
 
+    String roomToken="";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_call_screen);
+
+        mLocalContainer = new FrameLayout(this);
+        mRemoteContainer = new FrameLayout(this);
+        mRemoteView = new SurfaceView(this);
+        mLocalView = new SurfaceView(this);
 
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mProximity = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
@@ -313,6 +288,8 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
         inOrOut = intent.getStringExtra(EXTRA_DATA_IN_OR_OUT);
         receiverToken = intent.getStringExtra("token");
+        //todo check
+        roomToken = intent.getStringExtra("room_token");
         isVideoCall = intent.getBooleanExtra("callIsVideo", false);
 
 //        if (inOrOut.equals("IN")) {
@@ -335,7 +312,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         bottomButtons = findViewById(R.id.layout_btns);
         mySwitchCameraLLY = findViewById(R.id.switchVideo_LLY);
         myCallScreenRootRLY = findViewById(R.id.layout_call_screen_root_RLY);
-        textureView = new TextureView(this);
+
         mAudioPlayer = new AudioPlayer(this);
         onZegoCreated();
 
@@ -392,20 +369,22 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
     @Override
     protected void onDestroy() {
-        SplashActivity.CALL_STATUS=2;
+        SplashActivity.CALL_STATUS = 2;
         mAudioPlayer.stopProgressTone();
         mAudioPlayer.stopRingtone();
 
         setVolumeControlStream(AudioManager.USE_DEFAULT_STREAM_TYPE);
 
         if (isLoggedIn) {
-            zegoExpressEngine.stopPlayingStream(streamID);
-            zegoExpressEngine.stopPublishingStream();
-            zegoExpressEngine.stopPreview();
-            zegoExpressEngine.logoutRoom(callRoomId);
+            RtcEngine.destroy();
+            mRtcEngine = null;
+//            zegoExpressEngine.stopPlayingStream(streamID);
+//            zegoExpressEngine.stopPublishingStream();
+//            zegoExpressEngine.stopPreview();
+//            zegoExpressEngine.logoutRoom(callRoomId);
         }
 
-        ZegoExpressEngine.destroyEngine(null);
+        //ZegoExpressEngine.destroyEngine(null);
 
         try {
             if (wlOff != null && wlOff.isHeld()) {
@@ -423,10 +402,12 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     }
 
     private void endCall() {
-        SplashActivity.CALL_STATUS=2;
+        SplashActivity.CALL_STATUS = 2;
+        mRtcEngine.leaveChannel();
+
         mAudioPlayer.stopProgressTone();
         mAudioPlayer.stopRingtone();
-        //saveLog();
+        saveLog();
 
         try {
             if (!inOrOut.equals("IN")) {
@@ -445,34 +426,63 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     private void saveLog() {
         if (!logSaved) {
             rChatDb.beginTransaction();
-            rChatDb.copyToRealm(new LogCall(user, System.currentTimeMillis(), mCallDurationSecond,
+            rChatDb.copyToRealm(new LogCall(user, System.currentTimeMillis(), 0,
                     isVideoCall, inOrOut, userMe.getId(), user.getId()));
             rChatDb.commitTransaction();
             logSaved = true;
         }
     }
-
+    String accessToken ="";
     void onZegoCreated() {
-        zegoExpressEngine = ZegoExpressEngine.createEngine(Utils.appID, Utils.appSign, Utils.isTestEnv, ZegoScenario.COMMUNICATION, getApplication(), eventHandler);
+        if (isVideoCall && !checkSelfPermission(REQUESTED_PERMISSIONS[0], PERMISSION_REQ_ID) &&
+                checkSelfPermission(REQUESTED_PERMISSIONS[1], PERMISSION_REQ_ID) &&
+                checkSelfPermission(REQUESTED_PERMISSIONS[2], PERMISSION_REQ_ID)) {
+            Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        } else if (!checkSelfPermission(Manifest.permission.RECORD_AUDIO, PERMISSION_REQ_ID_RECORD_AUDIO)) {
+            Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        try {
+            mRtcEngine = RtcEngine.create(getBaseContext(), Utils.appID2, mRtcEventHandler);
+            mRtcEngine.setChannelProfile(Constants.CHANNEL_PROFILE_COMMUNICATION);
+        } catch (Exception e) {
+            Log.e("clima e", Log.getStackTraceString(e));
+            Toast.makeText(this, "NEED TO check rtc sdk init fatal error", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+         accessToken =  Utils.token;
+        mRtcEngine.joinChannel(accessToken, "testChannel", "Extra Optional Data", 0);
         if (isVideoCall) {
-            zegoExpressEngine.enableCamera(true);
-            zegoExpressEngine.muteMicrophone(false);
-            zegoExpressEngine.muteSpeaker(false);
             setVolumeControlStream(AudioManager.STREAM_SYSTEM);
+            isSpeaker = true;
+            mRtcEngine.enableVideo();
+            // Create a SurfaceView object.
+            mLocalView = RtcEngine.CreateRendererView(getBaseContext());
+            mLocalView.setZOrderMediaOverlay(true);
+            mLocalContainer.addView(mLocalView);
+            if (!inOrOut.equals("IN")) {
+                remoteVideo.removeAllViews();
+                remoteVideo.addView(mLocalContainer);
+            } else {
+                localVideo.setVisibility(View.VISIBLE);
+                localVideo.removeAllViews();
+                localVideo.addView(mLocalContainer);
+            }
+            VideoCanvas localVideoCanvas = new VideoCanvas(mLocalView, VideoCanvas.RENDER_MODE_HIDDEN, 0);
+            mRtcEngine.setupLocalVideo(localVideoCanvas);
         } else {
-            zegoExpressEngine.enableCamera(false);
-            zegoExpressEngine.setAudioRouteToSpeaker(false);
+            mRtcEngine.disableVideo();
             setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
         }
 
-        if (isVideoCall) {
-            remoteVideo.removeAllViews();
-            remoteVideo.addView(textureView);
-            ZegoCanvas zegoCanvas = new ZegoCanvas(textureView);
-            zegoCanvas.viewMode = ZegoViewMode.ASPECT_FILL;
-
-            zegoExpressEngine.startPreview(zegoCanvas);
-        }
+        isMute();
+        enableSpeaker(isSpeaker);
 
         String randomSuffix = String.valueOf(new Date().getTime() % (new Date().getTime() / 1000));
 
@@ -482,8 +492,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
             callRoomId = receiverToken;
         }
 
-        isMute();
-        enableSpeaker(isSpeaker);
 
         if (!isVideoCall && !inOrOut.equals("IN"))
             streamID = userMe.getId();
@@ -494,25 +502,9 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
             streamID = userMe.getId();
 
 
-        ZegoRoomConfig config = new ZegoRoomConfig();
-        config.isUserStatusNotify = true;
-        config.maxMemberCount = 3;
-        ZegoUser userZego = new ZegoUser(userMe.getId(), userMe.getName());
-
-        zegoExpressEngine.loginRoom(callRoomId, userZego, config);
-
-        /////////////////
-
-
-        ////////////////
-
-        if (isVideoCall) {
-            zegoExpressEngine.startPublishingStream(streamID);
-        }
-
         if (!inOrOut.equals("IN")) {
-            if (!isVideoCall)
-                zegoExpressEngine.startPublishingStream(streamID);
+//            if (!isVideoCall)
+            //zegoExpressEngine.startPublishingStream(streamID);
 
             DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
             HashMap<String, Object> datamap = new HashMap<>();
@@ -558,13 +550,11 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError databaseError) {
-
                     }
                 });
             } catch (Exception e) {
 
             }
-
         }
 
 
@@ -628,9 +618,10 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
             JSONObject dataObj = new JSONObject();
             dataObj.put("is_video", isVideoCall);
+            dataObj.put("is_group", false);
             dataObj.put("is_call", true);
             dataObj.put("room_id", callRoomId);
-            dataObj.put("stream_id", streamID);
+            dataObj.put("room_token", accessToken);
             dataObj.put("missed_call", isMissedCall);
             dataObj.put("caller_id", userMe.getId());
             dataObj.put("caller_name", userMe.getName());
@@ -669,6 +660,20 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     }
 
 
+    public boolean checkSelfPermission(String permission, int requestCode) {
+        Log.i("clima", "checkSelfPermission " + permission + " " + requestCode);
+        if (ContextCompat.checkSelfPermission(this,
+                permission)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this,
+                    new String[]{permission},
+                    requestCode);
+            return false;
+        }
+        return true;
+    }
+
     private void updateUI() {
 
         if (callRoomId != null) {
@@ -689,8 +694,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         switchVideo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                useFrontCamera = !useFrontCamera;
-                zegoExpressEngine.useFrontCamera(useFrontCamera);
+                mRtcEngine.switchCamera();
             }
         });
     }
@@ -713,22 +717,16 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     }
 
     private void enableSpeaker(boolean enable) {
+        mRtcEngine.setEnableSpeakerphone(enable);
         if (isVideoCall)
-            zegoExpressEngine.muteSpeaker(enable);
+            switchVolume.setImageDrawable(ContextCompat.getDrawable(this, enable ? R.drawable.ic_speaker : R.drawable.ic_speaker_off));
         else
-            zegoExpressEngine.setAudioRouteToSpeaker(enable);
-
-        switchVolume.setImageDrawable(ContextCompat.getDrawable(this, !isSpeaker ? R.drawable.ic_speaker : R.drawable.ic_speaker_off));
+            switchVolume.setImageDrawable(ContextCompat.getDrawable(this, !enable ? R.drawable.ic_speaker : R.drawable.ic_speaker_off));
     }
 
     private void isMute() {
-        if (isMute) {
-            zegoExpressEngine.muteMicrophone(true);
-            switchMic.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic_off));
-        } else {
-            zegoExpressEngine.muteMicrophone(false);
-            switchMic.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_mic_on));
-        }
+        switchMic.setImageDrawable(ContextCompat.getDrawable(this, isMute ? R.drawable.ic_mic_off : R.drawable.ic_mic_on));
+        mRtcEngine.muteLocalAudioStream(isMute);
     }
 
 

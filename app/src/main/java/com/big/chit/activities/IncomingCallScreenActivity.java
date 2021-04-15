@@ -42,7 +42,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
- * Zego Calling SDK Added by Ussama Iftikhar on 03-April-2021.
+ * Agora Calling SDK Added by Ussama Iftikhar on 12-April-2021.
  * Email iusama46@gmail.com
  * Email iusama466@gmail.com
  * Github https://github.com/iusama46
@@ -57,6 +57,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
     private String[] recordPermissions = {Manifest.permission.VIBRATE, Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
     private String mCallerId, mRoomId;
     private AudioPlayer mAudioPlayer;
+    private String roomToken;
     private View.OnClickListener mClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -87,8 +88,6 @@ public class IncomingCallScreenActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-
         setContentView(R.layout.activity_incoming_call_screen);
 
         Window win = getWindow();
@@ -100,16 +99,15 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
         Intent intent = getIntent();
         mCallerId = intent.getStringExtra("caller_id");
-        mCallerId = intent.getStringExtra("caller_id");
+        //mCallerId = intent.getStringExtra("caller_id");
         mRoomId = intent.getStringExtra("room_id");
+        roomToken = intent.getStringExtra("room_token");
         isVideo = intent.getBooleanExtra("is_video", false);
 
 
         findViewById(R.id.answerButton).setOnClickListener(mClickListener);
         findViewById(R.id.declineButton).setOnClickListener(mClickListener);
         onZegoConnected();
-
-
     }
 
     void onZegoConnected() {
@@ -150,7 +148,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
                     if (dataSnapshot.getChildrenCount() > 0) {
                         if (dataSnapshot.getKey().equals(phone.toString())) {
                             boolean value = (boolean) dataSnapshot.child("answered").getValue();
-                            String callerId = dataSnapshot.child("uId").getValue().toString();
+                            //String callerId = dataSnapshot.child("uId").getValue().toString();
                             if (!value) {
                                 mAudioPlayer.stopRingtone();
 
@@ -172,7 +170,6 @@ public class IncomingCallScreenActivity extends BaseActivity {
                                 String text = "Result to be returned....";
                                 data.setData(Uri.parse(text));
                                 setResult(RESULT_OK, data);
-
                                 finish();
                             }
 
@@ -198,7 +195,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
         Log.d("clima 22", user.getId());
         Log.d("clima 21", mCallerId);
         try {
-            startActivity(CallScreenActivity.newIntent(this, user, "IN",isVideo, mRoomId));
+            startActivity(CallScreenActivity.newIntent(this, user, "IN", isVideo, mRoomId, roomToken));
             finish();
         } catch (Exception e) {
             Log.e("CHECK", e.getMessage());

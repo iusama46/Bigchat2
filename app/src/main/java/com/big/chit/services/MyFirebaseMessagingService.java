@@ -1,16 +1,11 @@
 package com.big.chit.services;
 
 import android.app.AlarmManager;
-import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Intent;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 
-import com.big.chit.BaseApplication;
-import com.big.chit.R;
-import com.big.chit.activities.CallListActivity;
+import com.big.chit.activities.GroupIncomingActivity;
 import com.big.chit.activities.IncomingCallScreenActivity;
 import com.big.chit.utils.Helper;
 import com.google.firebase.messaging.FirebaseMessagingService;
@@ -64,17 +59,41 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             if (new Helper(this).isLoggedIn()) {
                 if (remoteMessage.getData().get("is_call") != null && Boolean.parseBoolean(remoteMessage.getData().get("is_call"))) {
                     if (remoteMessage.getData().get("missed_call") != null && !Boolean.parseBoolean(remoteMessage.getData().get("missed_call"))) {
-                        Intent intent = new Intent(this, IncomingCallScreenActivity.class);
-                        intent.putExtra("is_video", Boolean.parseBoolean(remoteMessage.getData().get("is_video")));
-                        intent.putExtra("stream_id", remoteMessage.getData().get("room_id").toString());
-                        intent.putExtra("room_id", remoteMessage.getData().get("room_id").toString());
-                        intent.putExtra("caller_id", remoteMessage.getData().get("caller_id").toString());
-                        //intent.putExtra("caller_id", "+923104772882")
-                        //intent.putExtra("caller_id", getIntent().getStringExtra("caller_id").toString());;
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        startActivity(intent);
-                        Log.d("clima", "dd");
+                        if (remoteMessage.getData().get("is_group") != null && !Boolean.parseBoolean(remoteMessage.getData().get("is_group"))) {
+                            Intent intent = new Intent(this, IncomingCallScreenActivity.class);
+                            // Toast.makeText(this, "1-1", Toast.LENGTH_SHORT).show();
+                            intent.putExtra("is_video", Boolean.parseBoolean(remoteMessage.getData().get("is_video")));
+                            intent.putExtra("room_token", remoteMessage.getData().get("room_token").toString());
+                            intent.putExtra("room_id", remoteMessage.getData().get("room_id").toString());
+                            intent.putExtra("caller_id", remoteMessage.getData().get("caller_id").toString());
+                            //intent.putExtra("caller_id", "+923104772882")
+                            //intent.putExtra("caller_id", getIntent().getStringExtra("caller_id").toString());;
+                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(intent);
+                            Log.d("clima", "dd");
+                            //   Toast.makeText(this, "1-1", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Log.d("clima", "ddgroup");
+
+                            Intent intent = new Intent(this, GroupIncomingActivity.class);
+                            // Toast.makeText(this, "1-1", Toast.LENGTH_SHORT).show();
+                            intent.putExtra("is_video", Boolean.parseBoolean(remoteMessage.getData().get("is_video")));
+                            intent.putExtra("room_token", remoteMessage.getData().get("room_token").toString());
+                            intent.putExtra("room_id", remoteMessage.getData().get("room_id").toString());
+                            intent.putExtra("caller_id", remoteMessage.getData().get("caller_id").toString());
+                            intent.putExtra("caller_name", remoteMessage.getData().get("caller_name").toString());
+                            Log.d("clima dremote",remoteMessage.getData().get("caller_name"));
+                            //intent.putExtra("caller_id", "+923104772882")
+                            //intent.putExtra("caller_id", getIntent().getStringExtra("caller_id").toString());;
+                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(intent);
+                            // Toast.makeText(this, "Group", Toast.LENGTH_SHORT).show();
+                        }
                         return;
+                    } else {
+
+                        return;
+                        //todo missed
                     }
                 }
             }

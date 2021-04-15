@@ -626,31 +626,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         registerUserUpdates();
         checkAndForward();
         initSwipe();
-        if (!isGroup) {
-                DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
-            try {
 
-                reference.child("token").addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.getValue().toString() != null) {
-                            token = dataSnapshot.getValue().toString();
-                            Log.d("clima token", token);
-                            isTokenReceived = true;
-                        }
-
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                    }
-                });
-            }catch (Exception e){
-                Log.d("clima", e.getMessage());
-
-            }
-        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -878,6 +854,32 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
                     Log.i("TAG", databaseError.getMessage());
                 }
             });
+
+            if (!isGroup) {
+                DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
+                try {
+
+                    reference.child("token").addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                            if (dataSnapshot.getValue().toString() != null) {
+                                token = dataSnapshot.getValue().toString();
+                                Log.d("clima token", token);
+                                isTokenReceived = true;
+                            }
+
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                        }
+                    });
+                }catch (Exception e){
+                    Log.d("clima", e.getMessage());
+
+                }
+            }
         } else {
             userStatus.setText("tap here for group info");
 
@@ -886,6 +888,8 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
             callVideo.setClickable(true);
             callAudio.setVisibility(View.VISIBLE);
             callVideo.setVisibility(View.VISIBLE);
+
+
         }
     }
 
@@ -1393,7 +1397,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         if (isGroup) {
             Log.d("clima", group.getId());
             Log.d("clima", group.getUserIds().toString());
-            startActivity(GroupCallActivity.newIntent(this, group, "callId", "OUT", callIsVideo));
+            startActivity(GroupCallActivity.newIntent(this, group, "callId", "OUT", callIsVideo,token,"test"));
             return;
         }
 
@@ -1421,14 +1425,13 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         if (permissionsAvailable(permissionsSinch)) {
             try {
 
-
                 if (user == null) {
                     // Service failed for some reason, show a Toast and abort
                     Toast.makeText(this, "Service is not started. Try stopping the service and starting it again before placing a call.", Toast.LENGTH_LONG).show();
                     return;
                 }
                 String callId = "room";
-                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, token));
+                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, token,"token"));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());
                 //ActivityCompat.requestPermissions(this, new String[]{e.getRequiredPermission()}, 0);
