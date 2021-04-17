@@ -64,7 +64,7 @@ dependencies {
     implementation 'com.android.support:multidex:1.0.3'
 
     //implementation 'im.zego:express-audio:2.4.1'
-    implementation 'im.zego:express-video:2.4.0'
+    //implementation 'im.zego:express-video:2.4.0'
     //implementation 'io.agora.rtc:voice-sdk:3.3.2'
     implementation 'io.agora.rtc:full-sdk:3.3.2'
     //implementation 'io.agora.rtc:full-sdk:3.0.0'

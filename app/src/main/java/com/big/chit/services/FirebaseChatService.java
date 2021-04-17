@@ -15,7 +15,9 @@ import android.content.pm.PackageManager;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.IBinder;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.support.v4.content.ContextCompat;
@@ -26,11 +28,14 @@ import android.util.Log;
 import com.big.chit.BaseApplication;
 import com.big.chit.R;
 import com.big.chit.activities.ChatActivity;
+import com.big.chit.activities.IncomingCallScreenActivity;
+import com.big.chit.activities.MainActivity;
 import com.big.chit.models.Attachment;
 import com.big.chit.models.AttachmentList;
 import com.big.chit.models.AttachmentTypes;
 import com.big.chit.models.Chat;
 import com.big.chit.models.Group;
+import com.big.chit.models.LogCall;
 import com.big.chit.models.Message;
 import com.big.chit.models.MessageNewArrayList;
 import com.big.chit.models.MyString;
@@ -54,6 +59,7 @@ import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -66,11 +72,18 @@ import io.realm.Realm;
 import io.realm.RealmList;
 import io.realm.RealmObject;
 
+/**
+ * BackGround Calling Support Added by Ussama Iftikhar on 12-April-2021.
+ * Email iusama46@gmail.com
+ * Email iusama466@gmail.com
+ * Github https://github.com/iusama46
+ */
+
 public class FirebaseChatService extends Service {
     private static final String CHANNEL_ID_MAIN = "my_channel_01";
     private static final String CHANNEL_ID_GROUP = "my_channel_02";
     private static final String CHANNEL_ID_USER = "my_channel_03";
-
+    String replyId = "0";
     private Helper helper;
     private String myId, msgUserID = "";
     private Realm rChatDb;
@@ -80,12 +93,198 @@ public class FirebaseChatService extends Service {
     private User userMe;
     private StatusImage statusImage;
     private Status status;
-    String replyId = "0";
     private ArrayList<MessageNewArrayList> messageArrayList = new ArrayList<>();
     //private RealmList<MessageNew> messageArrayList = new RealmList<>();
     private int count = 0;
     private int i = 0;
+    private BroadcastReceiver logoutReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            stopForeground(true);
+            stopSelf();
+        }
+    };
+    private BroadcastReceiver uploadAndSendReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction() != null && intent.getAction().equals(Helper.UPLOAD_AND_SEND)) {
+                Group group = null;
+                Attachment attachment = intent.getParcelableExtra("attachment");
+                if (intent.getParcelableExtra("chatDataGroup") != null) {
+                    group = intent.getParcelableExtra("chatDataGroup");
+                }
+                int type = intent.getIntExtra("attachment_type", -1);
+                String attachmentFilePath = intent.getStringExtra("attachment_file_path");
+                String attachmentChatChild = intent.getStringExtra("attachment_chat_child");
+                String attachmentRecipientId = intent.getStringExtra("attachment_recipient_id");
+                replyId = intent.getStringExtra("attachment_reply_id");
+                msgUserID = intent.getStringExtra("new_msg_id");
+//                uploadAndSend(new File(attachmentFilePath), attachment, type, attachmentChatChild,
+//                        attachmentRecipientId, group, msgUserID);
+                uploadAndSend(new File(attachmentFilePath), attachment, type, attachmentChatChild,
+                        attachmentRecipientId, group, msgUserID, intent.getStringExtra("statusUrl"));
+            }
+        }
+    };
 
+    private ChildEventListener callUpdateListner = new ChildEventListener() {
+        @Override
+        public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+
+        }
+
+        @Override
+        public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+        }
+
+        @Override
+        public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+
+        }
+
+        @Override
+        public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+        }
+
+        @Override
+        public void onCancelled(@NonNull DatabaseError databaseError) {
+
+        }
+    };
+    private ChildEventListener chatUpdateListener = new ChildEventListener() {
+        @Override
+        public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+
+            //  if (!dataSnapshot.getKey().equalsIgnoreCase("chatDelete")) {
+            Message message = dataSnapshot.getValue(Message.class);
+
+           /* if (message.isDelivered() || (message.getRecipientId().startsWith(Helper.GROUP_PREFIX) && !groupHashMap.containsKey(message.getRecipientId())))
+                return;  */
+            if (message != null && message.getId() != null) {
+                Message result = rChatDb.where(Message.class).equalTo("id", message.getId()).findFirst();
+                if (result == null && !TextUtils.isEmpty(myId) && helper.isLoggedIn()) {
+
+                    if (!message.getRecipientId().startsWith(Helper.GROUP_PREFIX) && message.isBlocked()
+                            && message.getSenderId().equalsIgnoreCase(userMe.getId()))
+                        saveMessage(message);
+                    else if (!message.getRecipientId().startsWith(Helper.GROUP_PREFIX) && !message.isBlocked())
+                        saveMessage(message);
+                    else if (message.getRecipientId().startsWith(Helper.GROUP_PREFIX))
+                        saveMessage(message);
+
+                    if (!message.getRecipientId().startsWith(Helper.GROUP_PREFIX) &&
+                            !message.getSenderId().equals(myId) && !message.isDelivered() && !message.isBlocked())
+                        BaseApplication.getChatRef().child(dataSnapshot.getRef().getParent().getKey())
+                                .child(message.getId()).child("delivered").setValue(true);
+                    /*saveMessage(message);
+                    if (!message.getRecipientId().startsWith(Helper.GROUP_PREFIX) && !message.getSenderId().equals(myId) && !message.isDelivered())
+                        BaseApplication.getChatRef().child(dataSnapshot.getRef().getParent().getKey()).child(message.getId()).child("delivered").setValue(true);*/
+                }
+            }
+            // }
+        }
+
+        @Override
+        public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+            //  if (!dataSnapshot.getKey().equalsIgnoreCase("chatDelete")) {
+            final Message message = dataSnapshot.getValue(Message.class);
+            if (message != null && message.getId() != null) {
+                final Message result = rChatDb.where(Message.class).equalTo("id", message.getId()).findFirst();
+                if (result != null) {
+                    //  rChatDb.beginTransaction();
+                    //Log.d("clima","hello 2chnaged");
+                    //startActivity(new Intent(FirebaseChatService.this, DelMainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    //Toast.makeText(FirebaseChatService.this, "chnaged", Toast.LENGTH_SHORT).show();
+                    rChatDb.executeTransaction(new Realm.Transaction() {
+                        @Override
+                        public void execute(Realm realm) {
+                            result.setReadMsg(message.isReadMsg());
+                            result.setDelivered(message.isDelivered());
+                            result.setDelete(message.getDelete());
+                            if (message.getUserIds() != null) {
+                                ArrayList<String> userIds = new ArrayList<>();
+                                userIds.addAll(message.getUserIds());
+                                result.setUserIds(userIds);
+                            }
+                        }
+                    });
+
+                    // rChatDb.commitTransaction();
+
+                }
+            }
+            //}
+        }
+
+        @Override
+        public void onChildRemoved(DataSnapshot dataSnapshot) {
+            // if (!dataSnapshot.getKey().equalsIgnoreCase("chatDelete")) {
+            Message message = dataSnapshot.getValue(Message.class);
+            if (message != null && message.getId() != null) {
+                Helper.deleteMessageFromRealm(rChatDb, message.getId());
+
+                String userOrGroupId = myId.equals(message.getSenderId()) ? message.getRecipientId() : message.getSenderId();
+                final Chat chat = Helper.getChat(rChatDb, myId, userOrGroupId).findFirst();
+                if (chat != null) {
+                    //rChatDb.beginTransaction();
+                    rChatDb.executeTransaction(new Realm.Transaction() {
+                        @Override
+                        public void execute(Realm realm) {
+                            RealmList<Message> realmList = chat.getMessages();
+                            if (realmList.size() == 0)
+                                RealmObject.deleteFromRealm(chat);
+                            else {
+                                chat.setLastMessage(realmList.get(realmList.size() - 1).getBody());
+                                chat.setTimeUpdated(realmList.get(realmList.size() - 1).getDate());
+                            }
+                        }
+                    });
+
+                    // rChatDb.commitTransaction();
+                }
+            }
+            ///  }
+        }
+
+        @Override
+        public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+        }
+
+        @Override
+        public void onCancelled(DatabaseError databaseError) {
+
+        }
+    };
+    private ChildEventListener chatStatusListener = new ChildEventListener() {
+        @Override
+        public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+            final MessageNewArrayList messageNewArrayList = dataSnapshot.getValue(MessageNewArrayList.class);
+
+        }
+
+        @Override
+        public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+        }
+
+        @Override
+        public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+        }
+
+        @Override
+        public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+        }
+
+        @Override
+        public void onCancelled(DatabaseError databaseError) {
+
+        }
+    };
 
     public FirebaseChatService() {
     }
@@ -115,41 +314,155 @@ public class FirebaseChatService extends Service {
                 this).registerReceiver(logoutReceiver, new IntentFilter(Helper.BROADCAST_LOGOUT));
     }
 
-    private BroadcastReceiver logoutReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            stopForeground(true);
-            stopSelf();
-        }
-    };
-
-    private BroadcastReceiver uploadAndSendReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getAction() != null && intent.getAction().equals(Helper.UPLOAD_AND_SEND)) {
-                Group group = null;
-                Attachment attachment = intent.getParcelableExtra("attachment");
-                if (intent.getParcelableExtra("chatDataGroup") != null) {
-                    group = intent.getParcelableExtra("chatDataGroup");
-                }
-                int type = intent.getIntExtra("attachment_type", -1);
-                String attachmentFilePath = intent.getStringExtra("attachment_file_path");
-                String attachmentChatChild = intent.getStringExtra("attachment_chat_child");
-                String attachmentRecipientId = intent.getStringExtra("attachment_recipient_id");
-                replyId = intent.getStringExtra("attachment_reply_id");
-                msgUserID = intent.getStringExtra("new_msg_id");
-//                uploadAndSend(new File(attachmentFilePath), attachment, type, attachmentChatChild,
-//                        attachmentRecipientId, group, msgUserID);
-                uploadAndSend(new File(attachmentFilePath), attachment, type, attachmentChatChild,
-                        attachmentRecipientId, group, msgUserID, intent.getStringExtra("statusUrl"));
-            }
-        }
-    };
-
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
+
+    private void registerCallUpdates() {
+        BaseApplication.getCallRef().child(userMe.getId()).addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                Log.d("clima", "added2k");
+                Log.d("clima", dataSnapshot.getKey());
+
+                if (dataSnapshot.child("call_status").getValue() != null) {
+
+                    int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
+
+                    if (callStatus == 0) {
+                        showCallNotifications(dataSnapshot, false, false);
+                    } else if (callStatus == 1) {
+                        Log.d("clima", "missed call");
+                        showCallNotifications(dataSnapshot, false, true);
+                        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
+                        reference.child(dataSnapshot.getKey()).child("call_status").setValue(5);
+                    }
+                }
+
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+                Log.d("clima", "chanedddd");
+                Log.d("clima", dataSnapshot.getKey());
+                if (dataSnapshot.child("call_status").getValue() != null) {
+
+                    int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
+
+                    if (callStatus == 0) {
+                        //showCallNotifications(dataSnapshot, false, false);
+                    } else if (callStatus == 1) {
+                        Log.d("clima2", "missed call");
+                        showCallNotifications(dataSnapshot, false, true);
+                        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
+                        reference.child(dataSnapshot.getKey()).child("call_status").setValue(5);
+                    }
+                }
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    private void showCallNotifications(DataSnapshot dataSnapshot, boolean isVideok, boolean isMissedCall) {
+
+        String callerId = (String) dataSnapshot.child("caller_id").getValue();
+        String contactName = "PakOne";
+        User userCaller = null;
+
+
+        HashMap<String, User> myUsers = helper.getCacheMyUsers();
+        if (myUsers != null && myUsers.containsKey(callerId)) {
+            userCaller = myUsers.get(callerId);
+            contactName = userCaller.getNameToDisplay();
+        }
+        boolean isVideo = (boolean) dataSnapshot.child("is_video").getValue();
+
+        String callType = isVideo ? "Video" : "Voice";
+        if (!isMissedCall) {
+            Intent intent = new Intent(FirebaseChatService.this, IncomingCallScreenActivity.class);
+
+            Log.d("clima id", callerId);
+
+            String roomId = (String) dataSnapshot.child("channel_id").getValue();
+            String roomToken = (String) dataSnapshot.child("channel_token").getValue();
+            intent.putExtra("is_video", isVideo);
+            intent.putExtra("room_token", roomToken);
+            intent.putExtra("room_id", roomId);
+            intent.putExtra("caller_id", callerId);
+            intent.putExtra("key", dataSnapshot.getKey());
+
+            TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+
+            stackBuilder.addNextIntentWithParentStack(intent);
+            PendingIntent pendingIntent = stackBuilder.getPendingIntent(92, PendingIntent.FLAG_UPDATE_CURRENT);
+
+
+            Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
+            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(FirebaseChatService.this, BaseApplication.CALL)
+                    .setContentTitle(contactName)
+                    .setContentText("Incoming " + callType + " Call")
+                    .setSmallIcon(R.drawable.ic_logo_)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setCategory(NotificationCompat.CATEGORY_CALL)
+                    //.addAction(R.drawable.camera_icon, getString(R.string.app_name), pendingIntent)
+//                            .addAction(R.drawable.ic_call_accept, getString(R.string.answer_call), receiveCallPendingIntent)
+                    .setAutoCancel(true)
+                    //.setSound(ringUri)
+                    .setFullScreenIntent(pendingIntent, true);
+            Notification incomingCallNotification = notificationBuilder.build();
+            //incomingCallNotification.notify();
+            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            manager.notify(89, incomingCallNotification);
+        } else {
+            Intent intent = new Intent(this, MainActivity.class);
+            PendingIntent pendingIntent = PendingIntent.getActivity(this, 56, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+            Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
+            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(FirebaseChatService.this, BaseApplication.CALL)
+                    .setContentTitle(contactName)
+                    .setContentText("Gave You " + callType + "  Missed Call")
+                    .setSmallIcon(R.drawable.ic_logo_)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setCategory(NotificationCompat.CATEGORY_CALL)
+                    .setDefaults(Notification.DEFAULT_ALL)
+                    //.addAction(R.drawable.camera_icon, getString(R.string.app_name), pendingIntent)
+//                            .addAction(R.drawable.ic_call_accept, getString(R.string.answer_call), receiveCallPendingIntent)
+                    .setAutoCancel(true)
+                    .setSound(ringUri)
+                    .setFullScreenIntent(pendingIntent, true);
+            Notification incomingCallNotification = notificationBuilder.build();
+            //incomingCallNotification.notify();
+            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            manager.notify(89, incomingCallNotification);
+
+            LogCall logCall = null;
+            if (userCaller != null) {
+            //    userCaller = new User(callerId, callerId, getString(R.string.app_name), "");
+                rChatDb.beginTransaction();
+                logCall = new LogCall(userCaller, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), userCaller.getId());
+                rChatDb.copyToRealm(logCall);
+                rChatDb.commitTransaction();
+            }
+
+        }
+    }
+
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -162,6 +475,7 @@ public class FirebaseChatService extends Service {
                 registerUserUpdates();
                 registerGroupUpdates();
                 registerStatusUpdates();
+                registerCallUpdates();
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
                         == PackageManager.PERMISSION_GRANTED) {
                     if (!FetchMyUsersService.STARTED) {
@@ -772,9 +1086,12 @@ public class FirebaseChatService extends Service {
         }
     }
 
+    //Status
+
     private void registerChatUpdates(boolean register, String id) {
         if (!TextUtils.isEmpty(myId) && !TextUtils.isEmpty(id)) {
             // DatabaseReference idChatRef = BaseApplication.getChatRef().child(id.startsWith(Helper.GROUP_PREFIX) ? id : Helper.getChatChild(myId, id));
+
             DatabaseReference idChatRef = BaseApplication.getChatRef().child(id.startsWith(Helper.GROUP_PREFIX) ? id : myId + "-" + id);
             DatabaseReference idChatRef1 = BaseApplication.getChatRef().child(id.startsWith(Helper.GROUP_PREFIX) ? id : id + "-" + myId);
             if (register) {
@@ -787,109 +1104,21 @@ public class FirebaseChatService extends Service {
         }
     }
 
+    private void registerCallUpdates(boolean register) {
 
-    private ChildEventListener chatUpdateListener = new ChildEventListener() {
-        @Override
-        public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-            //  if (!dataSnapshot.getKey().equalsIgnoreCase("chatDelete")) {
-            Message message = dataSnapshot.getValue(Message.class);
+        // DatabaseReference idChatRef = BaseApplication.getChatRef().child(id.startsWith(Helper.GROUP_PREFIX) ? id : Helper.getChatChild(myId, id));
 
-           /* if (message.isDelivered() || (message.getRecipientId().startsWith(Helper.GROUP_PREFIX) && !groupHashMap.containsKey(message.getRecipientId())))
-                return;  */
-            if (message != null && message.getId() != null) {
-                Message result = rChatDb.where(Message.class).equalTo("id", message.getId()).findFirst();
-                if (result == null && !TextUtils.isEmpty(myId) && helper.isLoggedIn()) {
-                    if (!message.getRecipientId().startsWith(Helper.GROUP_PREFIX) && message.isBlocked()
-                            && message.getSenderId().equalsIgnoreCase(userMe.getId()))
-                        saveMessage(message);
-                    else if (!message.getRecipientId().startsWith(Helper.GROUP_PREFIX) && !message.isBlocked())
-                        saveMessage(message);
-                    else if (message.getRecipientId().startsWith(Helper.GROUP_PREFIX))
-                        saveMessage(message);
-
-                    if (!message.getRecipientId().startsWith(Helper.GROUP_PREFIX) &&
-                            !message.getSenderId().equals(myId) && !message.isDelivered() && !message.isBlocked())
-                        BaseApplication.getChatRef().child(dataSnapshot.getRef().getParent().getKey())
-                                .child(message.getId()).child("delivered").setValue(true);
-                    /*saveMessage(message);
-                    if (!message.getRecipientId().startsWith(Helper.GROUP_PREFIX) && !message.getSenderId().equals(myId) && !message.isDelivered())
-                        BaseApplication.getChatRef().child(dataSnapshot.getRef().getParent().getKey()).child(message.getId()).child("delivered").setValue(true);*/
-                }
-            }
-            // }
+        DatabaseReference idChatRef = BaseApplication.getCallRef().child(userMe.getId());
+        //DatabaseReference idChatRef1 = BaseApplication.getChatRef().child(id.startsWith(Helper.GROUP_PREFIX) ? id : id + "-" + myId);
+        if (register) {
+            idChatRef.addChildEventListener(callUpdateListner);
+            //idChatRef1.addChildEventListener(chatUpdateListener);
+        } else {
+            idChatRef.removeEventListener(callUpdateListner);
+            //idChatRef1.removeEventListener(chatUpdateListener);
         }
 
-        @Override
-        public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-            //  if (!dataSnapshot.getKey().equalsIgnoreCase("chatDelete")) {
-            final Message message = dataSnapshot.getValue(Message.class);
-            if (message != null && message.getId() != null) {
-                final Message result = rChatDb.where(Message.class).equalTo("id", message.getId()).findFirst();
-                if (result != null) {
-                    //  rChatDb.beginTransaction();
-                    rChatDb.executeTransaction(new Realm.Transaction() {
-                        @Override
-                        public void execute(Realm realm) {
-                            result.setReadMsg(message.isReadMsg());
-                            result.setDelivered(message.isDelivered());
-                            result.setDelete(message.getDelete());
-                            if (message.getUserIds() != null) {
-                                ArrayList<String> userIds = new ArrayList<>();
-                                userIds.addAll(message.getUserIds());
-                                result.setUserIds(userIds);
-                            }
-                        }
-                    });
-
-                    // rChatDb.commitTransaction();
-
-                }
-            }
-            //}
-        }
-
-        @Override
-        public void onChildRemoved(DataSnapshot dataSnapshot) {
-            // if (!dataSnapshot.getKey().equalsIgnoreCase("chatDelete")) {
-            Message message = dataSnapshot.getValue(Message.class);
-            if (message != null && message.getId() != null) {
-                Helper.deleteMessageFromRealm(rChatDb, message.getId());
-
-                String userOrGroupId = myId.equals(message.getSenderId()) ? message.getRecipientId() : message.getSenderId();
-                final Chat chat = Helper.getChat(rChatDb, myId, userOrGroupId).findFirst();
-                if (chat != null) {
-                    //rChatDb.beginTransaction();
-                    rChatDb.executeTransaction(new Realm.Transaction() {
-                        @Override
-                        public void execute(Realm realm) {
-                            RealmList<Message> realmList = chat.getMessages();
-                            if (realmList.size() == 0)
-                                RealmObject.deleteFromRealm(chat);
-                            else {
-                                chat.setLastMessage(realmList.get(realmList.size() - 1).getBody());
-                                chat.setTimeUpdated(realmList.get(realmList.size() - 1).getDate());
-                            }
-                        }
-                    });
-
-                    // rChatDb.commitTransaction();
-                }
-            }
-            ///  }
-        }
-
-        @Override
-        public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-        }
-
-        @Override
-        public void onCancelled(DatabaseError databaseError) {
-
-        }
-    };
-
-    //Status
+    }
 
     private void registerStatusUpdates(boolean register, String id) {
         if (!TextUtils.isEmpty(myId) && !TextUtils.isEmpty(id)) {
@@ -901,34 +1130,6 @@ public class FirebaseChatService extends Service {
             }
         }
     }
-
-    private ChildEventListener chatStatusListener = new ChildEventListener() {
-        @Override
-        public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-            final MessageNewArrayList messageNewArrayList = dataSnapshot.getValue(MessageNewArrayList.class);
-
-        }
-
-        @Override
-        public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-        }
-
-        @Override
-        public void onChildRemoved(DataSnapshot dataSnapshot) {
-
-        }
-
-        @Override
-        public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-        }
-
-        @Override
-        public void onCancelled(DatabaseError databaseError) {
-
-        }
-    };
 
     private void updateMessage(Message message) {
         String userOrGroupId = message.getRecipientId().startsWith(Helper.GROUP_PREFIX) ? message.getRecipientId() : myId.equals(message.getSenderId()) ? message.getRecipientId() : message.getSenderId();
@@ -1096,6 +1297,7 @@ public class FirebaseChatService extends Service {
             notificationManager.notify(msgId, notificationBuilder.build());
         }
     }
+
 
     private String getContent(Message message) {
         if (message.getAttachmentType() == AttachmentTypes.AUDIO) {

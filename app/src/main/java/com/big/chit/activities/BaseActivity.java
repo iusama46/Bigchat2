@@ -117,7 +117,7 @@ public abstract class BaseActivity extends AppCompatActivity implements ServiceC
 //    private SinchService.SinchServiceInterface mSinchServiceInterface;
     protected Helper helper;
     protected Realm rChatDb;
-    protected DatabaseReference usersRef, groupRef, chatRef, statusRef;
+    protected DatabaseReference usersRef, groupRef, chatRef, statusRef, callRef;
     private FirebaseApp secondApp;
     private FirebaseDatabase secondDatabase;
 
@@ -152,6 +152,7 @@ public abstract class BaseActivity extends AppCompatActivity implements ServiceC
         groupRef = BaseApplication.getGroupRef();
         chatRef = BaseApplication.getChatRef();
         statusRef = BaseApplication.getStatusRef();
+        callRef = BaseApplication.getCallRef();
 
         Intent intent = new Intent(this, FirebaseChatService.class);
 

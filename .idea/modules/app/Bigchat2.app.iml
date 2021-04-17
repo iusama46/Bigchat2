@@ -91,7 +91,6 @@
     <orderEntry type="library" name="Gradle: com.squareup.okio:okio:1.14.0" level="project" />
     <orderEntry type="library" name="Gradle: io.realm:realm-android-library:5.4.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: com.android.support:multidex:1.0.3@aar" level="project" />
-    <orderEntry type="library" name="Gradle: im.zego:express-video:2.4.0@aar" level="project" />
     <orderEntry type="library" name="Gradle: io.agora.rtc:full-sdk:3.3.2@aar" level="project" />
     <orderEntry type="library" name="Gradle: com.eyalbira.loadingdots:loading-dots:1.0.2@aar" level="project" />
     <orderEntry type="library" name="Gradle: com.iceteck.silicompressorr:silicompressor:2.1@aar" level="project" />

@@ -24,7 +24,6 @@ import android.widget.Toast;
 import com.big.chit.R;
 import com.big.chit.models.Contact;
 import com.big.chit.models.Group;
-import com.big.chit.models.LogCall;
 import com.big.chit.models.Status;
 import com.big.chit.models.User;
 import com.big.chit.utils.AudioPlayer;
@@ -181,7 +180,7 @@ public class GroupIncomingActivity extends BaseActivity {
         try {
             //mCallId = MainActivity.RoomId;
 
-            startActivity(GroupCallActivity.newIntent(this, group, mCallerId, "IN", isVideo, mRoomId,roomToken));
+            startActivity(GroupCallActivity.newIntent(this, group, mCallerId, "IN", isVideo, mRoomId, roomToken));
 
             Intent data = new Intent();
             String text = "Result to be returned....";
