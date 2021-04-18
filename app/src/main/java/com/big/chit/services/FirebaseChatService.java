@@ -17,7 +17,6 @@ import android.net.Uri;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.support.v4.content.ContextCompat;
@@ -28,6 +27,7 @@ import android.util.Log;
 import com.big.chit.BaseApplication;
 import com.big.chit.R;
 import com.big.chit.activities.ChatActivity;
+import com.big.chit.activities.GroupIncomingActivity;
 import com.big.chit.activities.IncomingCallScreenActivity;
 import com.big.chit.activities.MainActivity;
 import com.big.chit.models.Attachment;
@@ -59,7 +59,6 @@ import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -127,32 +126,7 @@ public class FirebaseChatService extends Service {
         }
     };
 
-    private ChildEventListener callUpdateListner = new ChildEventListener() {
-        @Override
-        public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
 
-
-        }
-
-        @Override
-        public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-        }
-
-        @Override
-        public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
-
-        }
-
-        @Override
-        public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-
-        }
-
-        @Override
-        public void onCancelled(@NonNull DatabaseError databaseError) {
-
-        }
-    };
     private ChildEventListener chatUpdateListener = new ChildEventListener() {
         @Override
         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
@@ -323,43 +297,47 @@ public class FirebaseChatService extends Service {
         BaseApplication.getCallRef().child(userMe.getId()).addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                Log.d("clima", "added2k");
+
                 Log.d("clima", dataSnapshot.getKey());
 
-                if (dataSnapshot.child("call_status").getValue() != null) {
+                if (dataSnapshot.getChildrenCount() == 8) {
+                    if (dataSnapshot.child("call_status").getValue() != null) {
+                        int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
 
-                    int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
-
-                    if (callStatus == 0) {
-                        showCallNotifications(dataSnapshot, false, false);
-                    } else if (callStatus == 1) {
-                        Log.d("clima", "missed call");
-                        showCallNotifications(dataSnapshot, false, true);
-                        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
-                        reference.child(dataSnapshot.getKey()).child("call_status").setValue(5);
+                        if (callStatus == 0) {
+                            handleCallNotifications(dataSnapshot, false);
+                        } else if (callStatus == 1) {
+                            Log.d("clima", "missed call");
+                            handleCallNotifications(dataSnapshot, true);
+                            dataSnapshot.getRef().child("call_status").setValue(5);
+                        }
                     }
+                } else {
+                    dataSnapshot.getRef().removeValue();
                 }
-
             }
 
             @Override
             public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-                Log.d("clima", "chanedddd");
+                Log.d("clima", "changed");
                 Log.d("clima", dataSnapshot.getKey());
-                if (dataSnapshot.child("call_status").getValue() != null) {
 
-                    int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
+                if (dataSnapshot.getChildrenCount() == 8) {
+                    if (dataSnapshot.child("call_status").getValue() != null) {
+                        int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
 
-                    if (callStatus == 0) {
-                        //showCallNotifications(dataSnapshot, false, false);
-                    } else if (callStatus == 1) {
-                        Log.d("clima2", "missed call");
-                        showCallNotifications(dataSnapshot, false, true);
-                        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
-                        reference.child(dataSnapshot.getKey()).child("call_status").setValue(5);
+                        if (callStatus == 0) {
+                            //showCallNotifications(dataSnapshot, false);
+                            dataSnapshot.getRef().child("call_status").setValue(5);
+                        } else if (callStatus == 1) {
+                            Log.d("clima", "missed call");
+                            handleCallNotifications(dataSnapshot, true);
+                            dataSnapshot.getRef().child("call_status").setValue(5);
+                        }
                     }
+                } else {
+                    dataSnapshot.getRef().removeValue();
                 }
-
             }
 
             @Override
@@ -379,65 +357,65 @@ public class FirebaseChatService extends Service {
         });
     }
 
-    private void showCallNotifications(DataSnapshot dataSnapshot, boolean isVideok, boolean isMissedCall) {
+    private void handleCallNotifications(DataSnapshot dataSnapshot, boolean isMissedCall) {
 
+        boolean isGroup = (boolean) dataSnapshot.child("is_group").getValue();
         String callerId = (String) dataSnapshot.child("caller_id").getValue();
         String contactName = "PakOne";
+
+        boolean isVideo = (boolean) dataSnapshot.child("is_video").getValue();
+        String callType = isVideo ? "Video" : "Voice";
+
+        String roomId = (String) dataSnapshot.child("channel_id").getValue();
+        String roomToken = (String) dataSnapshot.child("channel_token").getValue();
+        String callerName = (String) dataSnapshot.child("caller_name").getValue();
+
         User userCaller = null;
-
-
         HashMap<String, User> myUsers = helper.getCacheMyUsers();
         if (myUsers != null && myUsers.containsKey(callerId)) {
             userCaller = myUsers.get(callerId);
             contactName = userCaller.getNameToDisplay();
+        } else {
+            contactName = callerId;
         }
-        boolean isVideo = (boolean) dataSnapshot.child("is_video").getValue();
 
-        String callType = isVideo ? "Video" : "Voice";
-        if (!isMissedCall) {
+        if (isGroup && !isMissedCall) {
+            Intent intent = new Intent(FirebaseChatService.this, GroupIncomingActivity.class);
+            Log.d("clima id", callerId);
+            intent.putExtra("is_video", isVideo);
+            intent.putExtra("room_token", roomToken);
+            intent.putExtra("room_id", roomId);
+            intent.putExtra("caller_id", callerId);
+            intent.putExtra("caller_name", callerName);
+            intent.putExtra("key", dataSnapshot.getKey());
+            createNotificationForCall(intent, callerName, "Incoming Group " + callType + " Call");
+        } else if (!isGroup && !isMissedCall) {
             Intent intent = new Intent(FirebaseChatService.this, IncomingCallScreenActivity.class);
 
             Log.d("clima id", callerId);
 
-            String roomId = (String) dataSnapshot.child("channel_id").getValue();
-            String roomToken = (String) dataSnapshot.child("channel_token").getValue();
             intent.putExtra("is_video", isVideo);
             intent.putExtra("room_token", roomToken);
             intent.putExtra("room_id", roomId);
             intent.putExtra("caller_id", callerId);
             intent.putExtra("key", dataSnapshot.getKey());
 
-            TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-
-            stackBuilder.addNextIntentWithParentStack(intent);
-            PendingIntent pendingIntent = stackBuilder.getPendingIntent(92, PendingIntent.FLAG_UPDATE_CURRENT);
+            createNotificationForCall(intent, contactName, "Incoming " + callType + " Call");
+        }
 
 
-            Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
-            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(FirebaseChatService.this, BaseApplication.CALL)
-                    .setContentTitle(contactName)
-                    .setContentText("Incoming " + callType + " Call")
-                    .setSmallIcon(R.drawable.ic_logo_)
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setCategory(NotificationCompat.CATEGORY_CALL)
-                    //.addAction(R.drawable.camera_icon, getString(R.string.app_name), pendingIntent)
-//                            .addAction(R.drawable.ic_call_accept, getString(R.string.answer_call), receiveCallPendingIntent)
-                    .setAutoCancel(true)
-                    //.setSound(ringUri)
-                    .setFullScreenIntent(pendingIntent, true);
-            Notification incomingCallNotification = notificationBuilder.build();
-            //incomingCallNotification.notify();
-            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            manager.notify(89, incomingCallNotification);
-        } else {
+        if (isMissedCall) {
+
             Intent intent = new Intent(this, MainActivity.class);
             PendingIntent pendingIntent = PendingIntent.getActivity(this, 56, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
             Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
+
+            String missedCallName = isGroup ? callerName : contactName;
             NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(FirebaseChatService.this, BaseApplication.CALL)
-                    .setContentTitle(contactName)
+                    .setContentTitle(missedCallName)
                     .setContentText("Gave You " + callType + "  Missed Call")
-                    .setSmallIcon(R.drawable.ic_logo_)
+                    .setSmallIcon(R.mipmap.ic_launcher)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setCategory(NotificationCompat.CATEGORY_CALL)
                     .setDefaults(Notification.DEFAULT_ALL)
@@ -447,13 +425,12 @@ public class FirebaseChatService extends Service {
                     .setSound(ringUri)
                     .setFullScreenIntent(pendingIntent, true);
             Notification incomingCallNotification = notificationBuilder.build();
-            //incomingCallNotification.notify();
             NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             manager.notify(89, incomingCallNotification);
 
             LogCall logCall = null;
-            if (userCaller != null) {
-            //    userCaller = new User(callerId, callerId, getString(R.string.app_name), "");
+            if (userCaller != null && !isGroup) {
+                //    userCaller = new User(callerId, callerId, getString(R.string.app_name), "");
                 rChatDb.beginTransaction();
                 logCall = new LogCall(userCaller, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), userCaller.getId());
                 rChatDb.copyToRealm(logCall);
@@ -461,6 +438,28 @@ public class FirebaseChatService extends Service {
             }
 
         }
+    }
+
+    private void createNotificationForCall(Intent intent, String callerName, String message) {
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+
+        stackBuilder.addNextIntentWithParentStack(intent);
+        PendingIntent pendingIntent = stackBuilder.getPendingIntent(92, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(FirebaseChatService.this, BaseApplication.CALL)
+                .setContentTitle(callerName)
+                .setContentText(message)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setAutoCancel(true)
+                //.setSound(ringUri)
+                .setFullScreenIntent(pendingIntent, true);
+        Notification incomingCallNotification = notificationBuilder.build();
+        //incomingCallNotification.notify();
+        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        manager.notify(89, incomingCallNotification);
     }
 
 
@@ -1104,21 +1103,21 @@ public class FirebaseChatService extends Service {
         }
     }
 
-    private void registerCallUpdates(boolean register) {
-
-        // DatabaseReference idChatRef = BaseApplication.getChatRef().child(id.startsWith(Helper.GROUP_PREFIX) ? id : Helper.getChatChild(myId, id));
-
-        DatabaseReference idChatRef = BaseApplication.getCallRef().child(userMe.getId());
-        //DatabaseReference idChatRef1 = BaseApplication.getChatRef().child(id.startsWith(Helper.GROUP_PREFIX) ? id : id + "-" + myId);
-        if (register) {
-            idChatRef.addChildEventListener(callUpdateListner);
-            //idChatRef1.addChildEventListener(chatUpdateListener);
-        } else {
-            idChatRef.removeEventListener(callUpdateListner);
-            //idChatRef1.removeEventListener(chatUpdateListener);
-        }
-
-    }
+//    private void registerCallUpdates(boolean register) {
+//
+//        // DatabaseReference idChatRef = BaseApplication.getChatRef().child(id.startsWith(Helper.GROUP_PREFIX) ? id : Helper.getChatChild(myId, id));
+//
+//        DatabaseReference idChatRef = BaseApplication.getCallRef().child(userMe.getId());
+//        //DatabaseReference idChatRef1 = BaseApplication.getChatRef().child(id.startsWith(Helper.GROUP_PREFIX) ? id : id + "-" + myId);
+//        if (register) {
+//            idChatRef.addChildEventListener(callUpdateListner);
+//            //idChatRef1.addChildEventListener(chatUpdateListener);
+//        } else {
+//            idChatRef.removeEventListener(callUpdateListner);
+//            //idChatRef1.removeEventListener(chatUpdateListener);
+//        }
+//
+//    }
 
     private void registerStatusUpdates(boolean register, String id) {
         if (!TextUtils.isEmpty(myId) && !TextUtils.isEmpty(id)) {

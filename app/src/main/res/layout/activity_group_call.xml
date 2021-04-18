@@ -7,25 +7,50 @@
     android:keepScreenOn="true">
 
 
-    <ScrollView
-        android:id="@+id/scroll"
-        android:visibility="gone"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_above="@+id/remoteUser">
+<!--    <ScrollView-->
+<!--        android:id="@+id/scroll"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="match_parent"-->
+<!--        -->
+<!--        android:visibility="visible">-->
 
-        <RelativeLayout
-            android:id="@+id/remoteVideo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/vertical_gradient" />
-    </ScrollView>
+
+<!--        <RelativeLayout-->
+<!--            android:id="@+id/remoteVideo"-->
+<!--            android:layout_width="match_parent"-->
+
+<!--            android:layout_height="wrap_content"-->
+<!--            android:background="@drawable/vertical_gradient"-->
+<!--            android:visibility="visible">-->
+
+            <FrameLayout
+                android:id="@+id/remoteVideo"
+                android:layout_above="@+id/remoteUser"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <com.big.chit.openvcall.ui.layout.GridVideoViewContainer
+                    android:id="@+id/grid_video_view_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <ViewStub
+                    android:id="@id/small_video_view_dock"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="60dp"
+                    android:inflatedId="@id/small_video_view_dock"
+                    android:layout="@layout/small_video_view_dock" />
+            </FrameLayout>
+<!--        </RelativeLayout>-->
+<!--    </ScrollView>-->
 
     <RelativeLayout
         android:id="@+id/remoteVideo2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_above="@+id/remoteUser"
+        android:visibility="gone"
         android:background="@drawable/vertical_gradient" />
 
 

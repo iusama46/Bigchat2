@@ -86,8 +86,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     DatabaseReference referenceDb;
     boolean isVideoCall;
 
-    String inComingCallerID = "";
-    String inComingRoomID = "";
     FrameLayout mLocalContainer, mRemoteContainer;
     SurfaceView mLocalView, mRemoteView;
     String roomToken = "";
@@ -108,18 +106,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     private Sensor mProximity;
     private RtcEngine mRtcEngine;
     private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
-        @Override
-        public void onRtcStats(RtcStats stats) {
-            super.onRtcStats(stats);
-
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    //Toast.makeText(CallScreenActivity.this, "users " + stats.users, Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-
 
         @Override
         public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
@@ -133,7 +119,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
                         //pushNotification(false);
                         callUser();
                     }
-                    //Toast.makeText(CallScreenActivity.this, "onJOinChannel", Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -149,9 +134,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
                         if (!mRtcEngine.isSpeakerphoneEnabled())
                             setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
 
-                    //Toast.makeText(CallScreenActivity.this, "onUersJoined", Toast.LENGTH_SHORT).show();
-
-                    //Toast.makeText(CallScreenActivity.this, "Connected", Toast.LENGTH_SHORT).show();
                     myTxtCalling.setText(getResources().getString(R.string.app_name) + " Call Connected");
 
                     mCallDuration.setVisibility(View.VISIBLE);
@@ -269,11 +251,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         }
         isVideoCall = intent.getBooleanExtra("callIsVideo", false);
 
-//        if (inOrOut.equals("IN")) {
-//            inComingRoomID= in
-//        }
-
-
         mCallDuration = findViewById(R.id.callDuration);
         mCallerName = findViewById(R.id.remoteUser);
         mCallState = findViewById(R.id.callState);
@@ -381,7 +358,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
                             int value = ((Long) dataSnapshot.child("call_status").getValue()).intValue();
                             if (value == 3) {
                                 isDenied = true;
-                                Toast.makeText(CallScreenActivity.this, "Call cancelled by receiver", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(CallScreenActivity.this, "Call Denied", Toast.LENGTH_SHORT).show();
                                 endCall();
                             }
                         }
@@ -407,6 +384,10 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         setVolumeControlStream(AudioManager.USE_DEFAULT_STREAM_TYPE);
 
         if (isLoggedIn) {
+
+            if (isVideoCall)
+                mRtcEngine.stopPreview();
+
             RtcEngine.destroy();
             mRtcEngine = null;
         }
@@ -571,59 +552,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
     }
 
-    private void pushNotification(boolean isMissedCall) {
-        //try {
-
-//            RequestQueue queue = Volley.newRequestQueue(this);
-//
-//            String url = "https://fcm.googleapis.com/fcm/send";
-//
-//            JSONObject notificationObject = new JSONObject();
-//            notificationObject.put("title", isVideoCall ? "Video Call" : "Voice Call");
-//            notificationObject.put("body", userMe.getId() + " is calling you");
-//
-//            JSONObject dataObj = new JSONObject();
-//            dataObj.put("is_video", isVideoCall);
-//            dataObj.put("is_group", false);
-//            dataObj.put("is_call", true);
-//            dataObj.put("room_id", callRoomId);
-//            dataObj.put("room_token", accessToken);
-//            dataObj.put("missed_call", isMissedCall);
-//            dataObj.put("caller_id", userMe.getId());
-//            dataObj.put("caller_name", userMe.getName());
-//
-//            JSONObject jsonObject = new JSONObject();
-//            jsonObject.put("notification", notificationObject);
-//            jsonObject.put("data", dataObj);
-//            jsonObject.put("to", receiverToken);
-//
-//            JsonObjectRequest request = new JsonObjectRequest(url, jsonObject, new Response.Listener<JSONObject>() {
-//                @Override
-//                public void onResponse(JSONObject response) {
-//                    Log.d("clima", response.toString());
-//                }
-//            }, new Response.ErrorListener() {
-//                @Override
-//                public void onErrorResponse(VolleyError error) {
-//                    Log.d("clima", error.getMessage());
-//                }
-//            }) {
-//                @Override
-//                public Map<String, String> getHeaders() {
-//                    String api_key_header_value = "key=AAAAn4Y4Ciw:APA91bHAgDKs1SakEKc-cdMI4LYz7G8O3IZ6odbpKU8h5tu0SmyICpeOhMFeBnwdOsccZVmUDuwZ245PWt_kk09E2fnS78VelY_JbaJ1XtJVNl4Na6QCioeXSoFS4kMvlDHzJ9EJvX1Q";
-//                    Map<String, String> headers = new HashMap<>();
-//                    headers.put("Content-Type", "application/json");
-//                    headers.put("Authorization", api_key_header_value);
-//                    return headers;
-//                }
-//            };
-//
-//            queue.add(request);
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-    }
 
 
     public boolean checkSelfPermission(String permission, int requestCode) {
@@ -684,6 +612,8 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
     private void enableSpeaker(boolean enable) {
         mRtcEngine.setEnableSpeakerphone(enable);
+        //mRtcEngine.disableAudio()
+
         if (isVideoCall)
             switchVolume.setImageDrawable(ContextCompat.getDrawable(this, enable ? R.drawable.ic_speaker : R.drawable.ic_speaker_off));
         else

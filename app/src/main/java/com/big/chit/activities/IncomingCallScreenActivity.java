@@ -77,6 +77,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
     @Override
     protected void onDestroy() {
+        mAudioPlayer.stopRingtone();
         super.onDestroy();
         if (valueEventListener != null)
             reference.removeEventListener(valueEventListener);
@@ -228,6 +229,11 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
 
         finish();
+    }
+
+    @Override
+    public void onBackPressed() {
+
     }
 
     private boolean recordPermissionsAvailable() {

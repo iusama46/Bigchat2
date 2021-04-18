@@ -1397,7 +1397,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         if (isGroup) {
             Log.d("clima", group.getId());
             Log.d("clima", group.getUserIds().toString());
-            startActivity(GroupCallActivity.newIntent(this, group, "callId", "OUT", callIsVideo,token,"test"));
+            startActivity(GroupCallActivity.newIntent(this, group, "callId", "OUT", callIsVideo,token,"test","key"));
             return;
         }
 

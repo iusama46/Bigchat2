@@ -118,28 +118,7 @@ public class CallListActivity extends BaseActivity {
 
         uiInit();
 
-        DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
-        try {
-            reference.child("token").addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                    if (dataSnapshot.getValue().toString() != null) {
-                        token = dataSnapshot.getValue().toString();
-                        Log.d("clima token", token);
-                        isTokenReceived = true;
-                    }
 
-                }
-
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                }
-            });
-        } catch (Exception e) {
-            Log.d("clima", e.getMessage());
-
-        }
 
     }
 
@@ -245,7 +224,7 @@ public class CallListActivity extends BaseActivity {
                     return;
                 }
 
-                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, token,"token"));
+             //   startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, token,"token"));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());
                 //ActivityCompat.requestPermissions(this, new String[]{e.getRequiredPermission()}, 0);
