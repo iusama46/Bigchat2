@@ -13,7 +13,6 @@ import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
@@ -28,7 +27,6 @@ import android.view.ViewStub;
 import android.view.animation.AlphaAnimation;
 import android.widget.Chronometer;
 import android.widget.FrameLayout;
-import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -89,9 +87,10 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
     private static final int PERMISSION_REQ_ID = 22;
-    private final HashMap<Integer, SurfaceView> mUidsList = new HashMap<>(); // uid = 0 || uid == EngineConfig.mUid
+    private final HashMap<Integer, SurfaceView> muIdsList = new HashMap<>();
     private final int mCallDurationSecond = 0;
-    //private final Handler mUIHandler = new Handler();
+    private final int mAudioRouting = Constants.AUDIO_ROUTE_DEFAULT;
+    private final boolean mIsLandscape = false;
     public int mLayoutType = LAYOUT_TYPE_DEFAULT;
     int configUid = 0;
     String callRoomId = "group";
@@ -103,21 +102,14 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     ImageView addPerson;
     boolean isVideoCall;
     User tempUser;
-    DatabaseReference userCall;
     boolean isLoggedIn = false;
-    GridLayout gridLayout;
     RelativeLayout remoteVideo2;
 
-    FrameLayout mLocalContainer, mRemoteContainer;
-    SurfaceView mLocalView, mRemoteView;
     String key, accessToken;
     FrameLayout remoteVideo;
     private SmallVideoViewAdapter mSmallVideoViewAdapter;
     private GridVideoViewContainer mGridVideoViewContainer;
     private RelativeLayout mSmallVideoViewDock;
-    private volatile int mAudioRouting = Constants.AUDIO_ROUTE_DEFAULT;
-    //private volatile boolean mFullScreen = false;
-    private boolean mIsLandscape = false;
     private RtcEngine mRtcEngine;
     private AudioPlayer mAudioPlayer;
     private String mCallId, inOrOut;
@@ -126,10 +118,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     private TextView mCallState, mCallerName, myTxtCalling;
     private Chronometer mCallDuration;
 
-
     private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
-
-
         @Override
         public void onRtcStats(RtcStats stats) {
             super.onRtcStats(stats);
@@ -204,10 +193,11 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                         mCallDuration.setFormat("%02d:%02d");
                         mCallDuration.setBase(SystemClock.elapsedRealtime());
                         mCallDuration.start();
-                        Toast.makeText(GroupCallActivity.this, "double tap for small views", Toast.LENGTH_SHORT).show();
+                        if (isVideoCall)
+                            Toast.makeText(GroupCallActivity.this, "Tip: Double tap for small/multiple views", Toast.LENGTH_SHORT).show();
                     }
                     isConnected = true;
-                    
+
                 }
             });
         }
@@ -223,7 +213,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                         if (temp <= 1)
                             endCall();
                     }
-
                     if (isVideoCall) {
                         doRemoveRemoteUi(uid);
                     }
@@ -245,7 +234,13 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     private SensorManager mSensorManager;
     private Sensor mProximity;
     private String receiverToken, roomToken;
-
+    private Handler myHandler;
+    private Runnable myRunnable = new Runnable() {
+        @Override
+        public void run() {
+            sendMissedCallUpdate();
+        }
+    };
 
     public static Intent newIntent(Context context, Group user, String callId, String inOrOut, boolean callIsVideo, String token, String roomToken, String key) {
         Intent intent = new Intent(context, GroupCallActivity.class);
@@ -310,19 +305,12 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_group_call);
 
-        mLocalContainer = new FrameLayout(this);
-        mRemoteContainer = new FrameLayout(this);
-        mRemoteView = new SurfaceView(this);
-        mLocalView = new SurfaceView(this);
-        userCall = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mProximity = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
         addPerson = findViewById(R.id.add_person);
         addPerson.setVisibility(View.VISIBLE);
 
-
         remoteVideo2 = findViewById(R.id.remoteVideo2);
-
 
         Intent intent = getIntent();
         group = intent.getParcelableExtra(EXTRA_DATA_USER);
@@ -351,9 +339,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         mySwitchCameraLLY = findViewById(R.id.switchVideo_LLY);
         myCallScreenRootRLY = findViewById(R.id.layout_call_screen_root_RLY);
 
-
         onZegoCreated();
-
 
         findViewById(R.id.hangupButton).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -363,6 +349,13 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         });
 
         remoteVideo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startAlphaAnimation();
+            }
+        });
+
+        remoteVideo2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 startAlphaAnimation();
@@ -439,7 +432,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         }
     }
 
-
     @Override
     public void onPause() {
         super.onPause();
@@ -460,15 +452,33 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
     protected void onDestroy() {
         mRtcEngine.leaveChannel();
-        mRtcEngine.stopPreview();
+
         mAudioPlayer.stopProgressTone();
         setVolumeControlStream(AudioManager.USE_DEFAULT_STREAM_TYPE);
 
+        if (isVideoCall) {
+            mRtcEngine.stopPreview();
+            muIdsList.clear();
+        }
+
+        if (!inOrOut.equals("IN")) {
+            if (myHandler != null && myRunnable != null)
+                myHandler.removeCallbacks(myRunnable);
+        }
+
         if (isLoggedIn) {
             if (isVideoCall)
-
                 RtcEngine.destroy();
             mRtcEngine = null;
+
+            try {
+                if (!inOrOut.equals("IN")) {
+                    sendMissedCallUpdate();
+                } else {
+                    //
+                }
+            } catch (Exception e) {
+            }
         }
         try {
             if (wlOff != null && wlOff.isHeld()) {
@@ -483,16 +493,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     }
 
     private void endCall() {
-        mAudioPlayer.stopProgressTone();
-
-        try {
-            if (!inOrOut.equals("IN")) {
-                sendMissedCallUpdate();
-            } else {
-                //
-            }
-        } catch (Exception e) {
-        }
         finish();
     }
 
@@ -582,14 +582,12 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             });
 
             SurfaceView surfaceV = RtcEngine.CreateRendererView(getApplicationContext());
-            //preview(true, surfaceV, 0);
             mRtcEngine.setupLocalVideo(new VideoCanvas(surfaceV, VideoCanvas.RENDER_MODE_HIDDEN, configUid));
             surfaceV.setZOrderOnTop(false);
             surfaceV.setZOrderMediaOverlay(false);
 
-
-            mUidsList.put(configUid, surfaceV);
-            mGridVideoViewContainer.initViewContainer(this, configUid, mUidsList, mIsLandscape); // first is now full view
+            muIdsList.put(configUid, surfaceV);
+            mGridVideoViewContainer.initViewContainer(this, configUid, muIdsList, mIsLandscape); // first is now full view
 
         }
         mRtcEngine.joinChannel(accessToken, "testChannel", "Extra Optional Data", 0);
@@ -658,32 +656,28 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         updateUI();
 
         if (!inOrOut.equals("IN")) {
-            final Handler handler = new Handler(Looper.getMainLooper());
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    //Do something after 100ms
-                    Log.d("clima", "waired");
-
-                    sendMissedCallUpdate();
-                }
-            }, 25000);
+            myHandler = new Handler();
+            myHandler.postDelayed(myRunnable, 25000);
         }
     }
 
     private void sendMissedCallUpdate() {
-        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
+
         for (int i = 0; i < group.getUserIds().size(); i++) {
             if (!userMe.getId().equals(group.getUserIds().get(i))) {
+                DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
                 reference.child(group.getUserIds().get(i)).child(key).addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         if (dataSnapshot.getChildrenCount() == 8) {
                             if (dataSnapshot.child("call_status").getValue() != null) {
                                 int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
+                                //Toast.makeText(GroupCallActivity.this, "call " + String.valueOf(callStatus), Toast.LENGTH_SHORT).show();
+                                Log.d("clima d", String.valueOf(callStatus));
+                                Log.d("clima d", dataSnapshot.getKey());
 
                                 if (callStatus == 0) {
-                                    dataSnapshot.getRef().child("call_status").setValue(1);
+                                    dataSnapshot.getRef().child("call_status").setValue(6);
                                 }
                             }
                         }
@@ -694,6 +688,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
                     }
                 });
+
             }
         }
     }
@@ -806,11 +801,10 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
     private void onBigVideoViewClicked(View view, int position) {
 
-        //toggleFullscreen();
     }
 
     private void onBigVideoViewDoubleClicked(View view, int position) {
-        if (mUidsList.size() < 2) {
+        if (muIdsList.size() < 2) {
             return;
         }
 
@@ -818,7 +812,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         UserStatusData user = mGridVideoViewContainer.getItem(position);
         int uid = (user.mUid == 0) ? configUid : user.mUid;
 
-        if (mLayoutType == LAYOUT_TYPE_DEFAULT && mUidsList.size() != 1) {
+        if (mLayoutType == LAYOUT_TYPE_DEFAULT && muIdsList.size() != 1) {
             switchToSmallVideoView(uid);
         } else {
             switchToDefaultVideoView();
@@ -833,16 +827,16 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
     private void switchToSmallVideoView(int bigBgUid) {
         HashMap<Integer, SurfaceView> slice = new HashMap<>(1);
-        slice.put(bigBgUid, mUidsList.get(bigBgUid));
-        Iterator<SurfaceView> iterator = mUidsList.values().iterator();
+        slice.put(bigBgUid, muIdsList.get(bigBgUid));
+        Iterator<SurfaceView> iterator = muIdsList.values().iterator();
         while (iterator.hasNext()) {
             SurfaceView s = iterator.next();
             s.setZOrderOnTop(true);
             s.setZOrderMediaOverlay(true);
         }
 
-        mUidsList.get(bigBgUid).setZOrderOnTop(false);
-        mUidsList.get(bigBgUid).setZOrderMediaOverlay(false);
+        muIdsList.get(bigBgUid).setZOrderOnTop(false);
+        muIdsList.get(bigBgUid).setZOrderMediaOverlay(false);
 
         mGridVideoViewContainer.initViewContainer(this, bigBgUid, slice, mIsLandscape);
 
@@ -850,7 +844,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
         mLayoutType = LAYOUT_TYPE_SMALL;
 
-        requestRemoteStreamType(mUidsList.size());
+        requestRemoteStreamType(muIdsList.size());
     }
 
 
@@ -858,14 +852,14 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         HashMap<Integer, Integer> status = new HashMap<>();
         status.put(targetUid, hide ? UserStatusData.VIDEO_MUTED : UserStatusData.DEFAULT_STATUS);
         if (mLayoutType == LAYOUT_TYPE_DEFAULT) {
-            mGridVideoViewContainer.notifyUiChanged(mUidsList, targetUid, status, null);
+            mGridVideoViewContainer.notifyUiChanged(muIdsList, targetUid, status, null);
         } else if (mLayoutType == LAYOUT_TYPE_SMALL) {
             UserStatusData bigBgUser = mGridVideoViewContainer.getItem(0);
             if (bigBgUser.mUid == targetUid) { // big background is target view
-                mGridVideoViewContainer.notifyUiChanged(mUidsList, targetUid, status, null);
+                mGridVideoViewContainer.notifyUiChanged(muIdsList, targetUid, status, null);
             } else { // find target view in small video view list
 
-                mSmallVideoViewAdapter.notifyUiChanged(mUidsList, bigBgUser.mUid, status, null);
+                mSmallVideoViewAdapter.notifyUiChanged(muIdsList, bigBgUser.mUid, status, null);
             }
         }
     }
@@ -878,7 +872,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                     return;
                 }
 
-                Object target = mUidsList.remove(uid);
+                Object target = muIdsList.remove(uid);
                 if (target == null) {
                     return;
                 }
@@ -896,14 +890,12 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                     switchToSmallVideoView(bigBgUid);
                 }
 
-                //notifyMessageChanged(new Message(new User(0, null), "user " + (uid & 0xFFFFFFFFL) + " left"));
             }
         });
     }
 
 
     private void requestRemoteStreamType(final int currentHostCount) {
-        //   log.debug("requestRemoteStreamType " + currentHostCount);
     }
 
     private void switchToDefaultVideoView() {
@@ -911,11 +903,11 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             mSmallVideoViewDock.setVisibility(View.GONE);
         }
         //todo
-        mGridVideoViewContainer.initViewContainer(this, configUid, mUidsList, mIsLandscape);
+        mGridVideoViewContainer.initViewContainer(this, configUid, muIdsList, mIsLandscape);
 
         mLayoutType = LAYOUT_TYPE_DEFAULT;
         boolean setRemoteUserPriorityFlag = false;
-        int sizeLimit = mUidsList.size();
+        int sizeLimit = muIdsList.size();
         if (sizeLimit > ConstantApp.MAX_PEER_COUNT + 1) {
             sizeLimit = ConstantApp.MAX_PEER_COUNT + 1;
         }
@@ -925,10 +917,10 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                 if (!setRemoteUserPriorityFlag) {
                     setRemoteUserPriorityFlag = true;
                     mRtcEngine.setRemoteUserPriority(uid, Constants.USER_PRIORITY_HIGH);
-                    //log.debug("setRemoteUserPriority USER_PRIORITY_HIGH " + mUidsList.size() + " " + (uid & 0xFFFFFFFFL));
+
                 } else {
                     mRtcEngine.setRemoteUserPriority(uid, 100);
-                    //log.debug("setRemoteUserPriority USER_PRIORITY_NORANL " + mUidsList.size() + " " + (uid & 0xFFFFFFFFL));
+
                 }
             }
         }
@@ -940,7 +932,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             mSmallVideoViewDock = (RelativeLayout) stub.inflate();
         }
 
-        boolean twoWayVideoCall = mUidsList.size() == 2;
+        boolean twoWayVideoCall = muIdsList.size() == 2;
 
         RecyclerView recycler = (RecyclerView) findViewById(R.id.small_video_view_container);
 
@@ -948,7 +940,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
         if (mSmallVideoViewAdapter == null) {
             create = true;
-            mSmallVideoViewAdapter = new SmallVideoViewAdapter(this, configUid, exceptUid, mUidsList);
+            mSmallVideoViewAdapter = new SmallVideoViewAdapter(this, configUid, exceptUid, muIdsList);
             mSmallVideoViewAdapter.setHasStableIds(true);
         }
         recycler.setHasFixedSize(true);
@@ -983,16 +975,16 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
         if (!create) {
             mSmallVideoViewAdapter.setLocalUid(configUid);
-            mSmallVideoViewAdapter.notifyUiChanged(mUidsList, exceptUid, null, null);
+            mSmallVideoViewAdapter.notifyUiChanged(muIdsList, exceptUid, null, null);
         }
-        for (Integer tempUid : mUidsList.keySet()) {
+        for (Integer tempUid : muIdsList.keySet()) {
             if (configUid != tempUid) {
                 if (tempUid == exceptUid) {
                     mRtcEngine.setRemoteUserPriority(tempUid, Constants.USER_PRIORITY_HIGH);
-                    //log.debug("setRemoteUserPriority USER_PRIORITY_HIGH " + mUidsList.size() + " " + (tempUid & 0xFFFFFFFFL));
+
                 } else {
                     mRtcEngine.setRemoteUserPriority(tempUid, 100);
-                    //log.debug("setRemoteUserPriority USER_PRIORITY_NORANL " + mUidsList.size() + " " + (tempUid & 0xFFFFFFFFL));
+
                 }
             }
         }
@@ -1008,42 +1000,27 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                     return;
                 }
 
-                if (mUidsList.containsKey(uid)) {
+                if (muIdsList.containsKey(uid)) {
                     return;
                 }
 
-                /*
-                  Creates the video renderer view.
-                  CreateRendererView returns the SurfaceView type. The operation and layout of the
-                  view are managed by the app, and the Agora SDK renders the view provided by the
-                  app. The video display view must be created using this method instead of
-                  directly calling SurfaceView.
-                 */
                 SurfaceView surfaceV = RtcEngine.CreateRendererView(getApplicationContext());
-                mUidsList.put(uid, surfaceV);
+                muIdsList.put(uid, surfaceV);
 
                 boolean useDefaultLayout = mLayoutType == LAYOUT_TYPE_DEFAULT;
 
                 surfaceV.setZOrderOnTop(true);
                 surfaceV.setZOrderMediaOverlay(true);
 
-                /*
-                  Initializes the video view of a remote user.
-                  This method initializes the video view of a remote stream on the local device. It affects only the video view that the local user sees.
-                  Call this method to bind the remote video stream to a video view and to set the rendering and mirror modes of the video view.
-                 */
                 mRtcEngine.setupRemoteVideo(new VideoCanvas(surfaceV, VideoCanvas.RENDER_MODE_HIDDEN, uid));
 
                 if (useDefaultLayout) {
-                    //log.debug("doRenderRemoteUi LAYOUT_TYPE_DEFAULT " + (uid & 0xFFFFFFFFL));
                     switchToDefaultVideoView();
                 } else {
                     int bigBgUid = mSmallVideoViewAdapter == null ? uid : mSmallVideoViewAdapter.getExceptedUid();
-                    //log.debug("doRenderRemoteUi LAYOUT_TYPE_SMALL " + (uid & 0xFFFFFFFFL) + " " + (bigBgUid & 0xFFFFFFFFL));
+
                     switchToSmallVideoView(bigBgUid);
                 }
-
-                // notifyMessageChanged(new Message(new User(0, null), "video from user " + (uid & 0xFFFFFFFFL) + " decoded"));
             }
         });
     }

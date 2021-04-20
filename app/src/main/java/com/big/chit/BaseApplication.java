@@ -29,14 +29,15 @@ import com.vanniktech.emoji.google.GoogleEmojiProvider;
 import cafe.adriel.androidaudioconverter.AndroidAudioConverter;
 import cafe.adriel.androidaudioconverter.callback.ILoadCallback;
 
+/**
+ * Agora Calling SDK Added by Ussama Iftikhar on 12-April-2021.
+ * Email iusama46@gmail.com
+ * Email iusama466@gmail.com
+ * Github https://github.com/iusama46
+ */
+
 public class BaseApplication extends Application implements LifecycleObserver {
 
-    /**
-     * Agora Calling SDK Added by Ussama Iftikhar on 12-April-2021.
-     * Email iusama46@gmail.com
-     * Email iusama466@gmail.com
-     * Github https://github.com/iusama46
-     */
     public static final String CALL = "INCOMING_CALL_N";
     private static FirebaseDatabase firebaseDatabase;
     private static DatabaseReference userRef, chatRef, groupsRef, statusRef, callRef;
@@ -94,14 +95,6 @@ public class BaseApplication extends Application implements LifecycleObserver {
     @Override
     public void onCreate() {
         super.onCreate();
-//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-//            NotificationChannel notificationChannel =  new NotificationChannel(
-//                    CALL,"Calling", NotificationManager.IMPORTANCE_HIGH
-//            );
-//
-//            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-//            manager.createNotificationChannel(notificationChannel);
-//        }
         ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
         ConnectivityReceiver.init(this);
         EmojiManager.install(new GoogleEmojiProvider());
@@ -115,7 +108,7 @@ public class BaseApplication extends Application implements LifecycleObserver {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
                 Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
-                NotificationChannel channel = new NotificationChannel(CALL, "Call Service2", NotificationManager.IMPORTANCE_HIGH);
+                NotificationChannel channel = new NotificationChannel(CALL, "Call Service", NotificationManager.IMPORTANCE_HIGH);
                 channel.setDescription("Incoming Call Notification");
                 channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
                 channel.setImportance(NotificationManager.IMPORTANCE_HIGH);

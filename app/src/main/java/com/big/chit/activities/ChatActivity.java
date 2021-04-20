@@ -856,30 +856,33 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
             });
 
             if (!isGroup) {
-                DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
-                try {
-
-                    reference.child("token").addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                            if (dataSnapshot.getValue().toString() != null) {
-                                token = dataSnapshot.getValue().toString();
-                                Log.d("clima token", token);
-                                isTokenReceived = true;
-                            }
-
-                        }
-
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                        }
-                    });
-                }catch (Exception e){
-                    Log.d("clima", e.getMessage());
-
-                }
+                isTokenReceived = true;
+                token ="test";
             }
+//                DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
+//                try {
+//
+//                    reference.child("token").addListenerForSingleValueEvent(new ValueEventListener() {
+//                        @Override
+//                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+//                            if (dataSnapshot.getValue().toString() != null) {
+//                                token = dataSnapshot.getValue().toString();
+//                                Log.d("clima token", token);
+//                                isTokenReceived = true;
+//                            }
+//
+//                        }
+//
+//                        @Override
+//                        public void onCancelled(@NonNull DatabaseError databaseError) {
+//
+//                        }
+//                    });
+//                }catch (Exception e){
+//                    Log.d("clima", e.getMessage());
+//
+//                }
+//            }
         } else {
             userStatus.setText("tap here for group info");
 
@@ -1431,7 +1434,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
                     return;
                 }
                 String callId = "room";
-                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, token,"token"));
+                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, token,"token","key"));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());
                 //ActivityCompat.requestPermissions(this, new String[]{e.getRequiredPermission()}, 0);

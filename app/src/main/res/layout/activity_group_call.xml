@@ -24,6 +24,7 @@
 <!--            android:visibility="visible">-->
 
             <FrameLayout
+                android:visibility="gone"
                 android:id="@+id/remoteVideo"
                 android:layout_above="@+id/remoteUser"
                 android:layout_width="match_parent"
@@ -50,7 +51,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_above="@+id/remoteUser"
-        android:visibility="gone"
+
         android:background="@drawable/vertical_gradient" />
 
 

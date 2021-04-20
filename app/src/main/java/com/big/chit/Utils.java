@@ -12,6 +12,6 @@ public class Utils {
     public static final boolean isTestEnv = true;
 
     public  static  final String appID2 = "e7d3be2abaf54f8cbe2a329271388a26";
-    public  static  final String token = "006e7d3be2abaf54f8cbe2a329271388a26IAAqM9i5LpvpKJNguPRu/HZpeO/0V/pFoB0t+1SoLHCL/HZXrgMAAAAAEACsrxsmJs99YAEAAQAoz31g";
+    public  static  final String token = "006e7d3be2abaf54f8cbe2a329271388a26IACHU+KjPXv3dfH8NA0GVZN59++BJR+Ebql/MgLqTFTJZHZXrgMAAAAAEACESFKsWf5+YAEAAQBZ/n5g";
 
 }

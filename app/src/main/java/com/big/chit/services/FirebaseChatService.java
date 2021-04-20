@@ -423,6 +423,7 @@ public class FirebaseChatService extends Service {
 //                            .addAction(R.drawable.ic_call_accept, getString(R.string.answer_call), receiveCallPendingIntent)
                     .setAutoCancel(true)
                     .setSound(ringUri)
+                    .setContentIntent(pendingIntent)
                     .setFullScreenIntent(pendingIntent, true);
             Notification incomingCallNotification = notificationBuilder.build();
             NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -454,6 +455,7 @@ public class FirebaseChatService extends Service {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
                 //.setSound(ringUri)
                 .setFullScreenIntent(pendingIntent, true);
         Notification incomingCallNotification = notificationBuilder.build();

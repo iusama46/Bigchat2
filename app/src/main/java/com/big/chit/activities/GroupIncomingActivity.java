@@ -4,8 +4,6 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
@@ -22,8 +20,11 @@ import com.big.chit.models.Group;
 import com.big.chit.models.Status;
 import com.big.chit.models.User;
 import com.big.chit.utils.AudioPlayer;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 
@@ -39,6 +40,8 @@ public class GroupIncomingActivity extends BaseActivity {
 
     boolean isVideo = false;
     String key = "";
+    ValueEventListener valueEventListener;
+    DatabaseReference reference;
     private AudioPlayer mAudioPlayer;
     private String callerName, roomToken, mRoomId;
     private String mCallerId;
@@ -62,6 +65,43 @@ public class GroupIncomingActivity extends BaseActivity {
 
     @Override
     public void onBackPressed() {
+
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
+        try {
+            valueEventListener = reference.child(key).addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                    if (dataSnapshot.getChildrenCount() > 0) {
+
+                        if (dataSnapshot.child("call_status").getValue() != null) {
+
+                            int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
+
+
+                            if (callStatus != 0) {
+                                mAudioPlayer.stopRingtone();
+                                finish();
+                            }
+                        }
+
+                    }
+                }
+
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            });
+        } catch (Exception e) {
+
+        }
 
     }
 
@@ -94,6 +134,8 @@ public class GroupIncomingActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         mAudioPlayer.stopRingtone();
+        if (valueEventListener != null)
+            reference.removeEventListener(valueEventListener);
         super.onDestroy();
     }
 
@@ -105,13 +147,6 @@ public class GroupIncomingActivity extends BaseActivity {
         Log.d("clima remote", callerName);
         remoteUser.setText(callerName);
 
-        final Handler handler = new Handler(Looper.getMainLooper());
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                declineClicked();
-            }
-        }, 25000);
     }
 
     private void answerClicked() {

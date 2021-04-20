@@ -168,12 +168,6 @@ public class IncomingCallScreenActivity extends BaseActivity {
                                     rChatDb.commitTransaction();
                                 }
 
-
-                                //Toast.makeText(IncomingCallScreenActivity.this, "Canceled by caller", Toast.LENGTH_SHORT).show();
-//                                Intent data = new Intent();
-//                                String text = "Result to be returned....";
-//                                data.setData(Uri.parse(text));
-//                                setResult(RESULT_OK, data);
                                 finish();
                             }
 
@@ -196,7 +190,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
     private void answerClicked() {
         mAudioPlayer.stopRingtone();
         try {
-            startActivity(CallScreenActivity.newIntent(this, user, "IN", isVideo, mRoomId, roomToken));
+            startActivity(CallScreenActivity.newIntent(this, user, "IN", isVideo, mRoomId, roomToken, key));
             finish();
         } catch (Exception e) {
             Log.e("CHECK", e.getMessage());

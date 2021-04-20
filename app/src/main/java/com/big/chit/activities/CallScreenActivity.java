@@ -134,15 +134,33 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
                         if (!mRtcEngine.isSpeakerphoneEnabled())
                             setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
 
-                    myTxtCalling.setText(getResources().getString(R.string.app_name) + " Call Connected");
+                    if (!isConnected) {
+                        myTxtCalling.setText(getResources().getString(R.string.app_name) + " Call Connected");
 
-                    mCallDuration.setVisibility(View.VISIBLE);
-                    mCallDuration.setFormat("%02d:%02d");
-                    mCallDuration.setBase(SystemClock.elapsedRealtime());
-                    //mCallDuration.setText("Connected");
-                    mCallDuration.start();
-                    isConnected = true;
+                        mCallDuration.setVisibility(View.VISIBLE);
+                        mCallDuration.setFormat("%02d:%02d");
+                        mCallDuration.setBase(SystemClock.elapsedRealtime());
+                        //mCallDuration.setText("Connected");
+                        mCallDuration.start();
+                        isConnected = true;
+                        AudioManager am = getAudioManager();
+                        if (am.isSpeakerphoneOn()) {
+                            Log.d("clima LOG:", "AUDIO_ROUTE_SPEAKERPHONE");
+                        } else if (am.isBluetoothScoOn() || am.isBluetoothA2dpOn()) {
+                            Log.d("clima LOG:", "AUDIO_ROUTE_HEADSETBLUETOOTH");
+                        } else if (am.isWiredHeadsetOn()) {
+                            Log.d("clima LOG:", "AUDIO_ROUTE_HEADSET");
+                            // Call setEnableSpeakerphone here to route the audio output to the speaker or earpiece
+                        } else {
+                            Log.d("clima LOG:", "AUDIO_ROUTE_EARPIECE");
+                            // Call setEnableSpeakerphone here to route the audio output to the speaker or earpiece
+                        }
+                    }
 
+                    if (inOrOut.equals("IN")) {
+                        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId()).child(key);
+                        reference.child("call_status").setValue(4);
+                    }
                     if (isVideoCall) {
                         remoteVideo.removeAllViews();
                         remoteVideo.setVisibility(View.VISIBLE);
@@ -172,14 +190,24 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
     };
 
-    public static Intent newIntent(Context context, User user, String inOrOut, boolean callIsVideo, String token, String roomToken) {
+    public static Intent newIntent(Context context, User user, String inOrOut, boolean callIsVideo, String token, String roomToken, String key) {
         Intent intent = new Intent(context, CallScreenActivity.class);
         intent.putExtra(EXTRA_DATA_USER, user);
         intent.putExtra(EXTRA_DATA_IN_OR_OUT, inOrOut);
         intent.putExtra("callIsVideo", callIsVideo);
         intent.putExtra("token", token);
         intent.putExtra("room_token", roomToken);
+        intent.putExtra("key", key);
         return intent;
+    }
+
+    public AudioManager getAudioManager() {
+        Context context = this.getApplicationContext();
+        if (context == null) {
+            return null;
+        }
+
+        return (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
     }
 
     @SuppressLint("InvalidWakeLockTag")
@@ -248,6 +276,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         //todo check
         if (inOrOut.equals("IN")) {
             roomToken = intent.getStringExtra("room_token");
+            key = intent.getStringExtra("key");
         }
         isVideoCall = intent.getBooleanExtra("callIsVideo", false);
 
@@ -269,7 +298,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
         mAudioPlayer = new AudioPlayer(this);
         onZegoCreated();
-
 
         findViewById(R.id.hangupButton).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -322,12 +350,8 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     }
 
     private void callUser() {
-
-        //todo
-        //Missed call 1, in progress 0, cancelled by caller 3, by receiver 2 done 4, 5 for no
         DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(user.getId());
         key = reference.push().getKey();
-        Log.d("clima", key);
 
         HashMap<String, Object> datamap = new HashMap<>();
         datamap.put("is_video", isVideoCall);
@@ -377,19 +401,35 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
     @Override
     protected void onDestroy() {
-        SplashActivity.CALL_STATUS = 2;
         mAudioPlayer.stopProgressTone();
         mAudioPlayer.stopRingtone();
 
         setVolumeControlStream(AudioManager.USE_DEFAULT_STREAM_TYPE);
-
         if (isLoggedIn) {
-
+            mRtcEngine.leaveChannel();
             if (isVideoCall)
                 mRtcEngine.stopPreview();
-
             RtcEngine.destroy();
             mRtcEngine = null;
+
+            saveLog();
+
+            try {
+                if (!inOrOut.equals("IN")) {
+                    DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(user.getId()).child(key);
+                    if (isConnected) {
+                        reference.child("call_status").setValue(4);
+                    } else {
+                        //todo miss call message
+                        if (isDenied)
+                            reference.child("call_status").setValue(3);
+                        else
+                            reference.child("call_status").setValue(1);
+                    }
+                }
+
+            } catch (Exception e) {
+            }
         }
 
         try {
@@ -408,29 +448,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     }
 
     private void endCall() {
-        //SplashActivity.CALL_STATUS = 2;
-        mRtcEngine.leaveChannel();
-
-        mAudioPlayer.stopProgressTone();
-        mAudioPlayer.stopRingtone();
-        saveLog();
-
-        try {
-            if (!inOrOut.equals("IN")) {
-                DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(user.getId()).child(key);
-                if (isConnected) {
-                    reference.child("call_status").setValue(4);
-                } else {
-                    //todo miss call message
-                    if (isDenied)
-                        reference.child("call_status").setValue(3);
-                    else
-                        reference.child("call_status").setValue(1);
-                }
-            }
-
-        } catch (Exception e) {
-        }
         finish();
     }
 
@@ -479,22 +496,13 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
             mLocalView = RtcEngine.CreateRendererView(getBaseContext());
             mLocalView.setZOrderMediaOverlay(true);
             mLocalContainer.addView(mLocalView);
-            if (!inOrOut.equals("IN")) {
-                remoteVideo.removeAllViews();
-                remoteVideo.addView(mLocalContainer);
-            } else {
-                remoteVideo.removeAllViews();
-                remoteVideo.addView(mLocalContainer);
-
-//                localVideo.setVisibility(View.VISIBLE);
-//                localVideo.removeAllViews();
-//                localVideo.addView(mLocalContainer);
-            }
+            remoteVideo.removeAllViews();
+            remoteVideo.addView(mLocalContainer);
             VideoCanvas localVideoCanvas = new VideoCanvas(mLocalView, VideoCanvas.RENDER_MODE_HIDDEN, 0);
             mRtcEngine.setupLocalVideo(localVideoCanvas);
         } else {
             mRtcEngine.disableVideo();
-            setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
+            //setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
         }
 
         isMute();
@@ -553,7 +561,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     }
 
 
-
     public boolean checkSelfPermission(String permission, int requestCode) {
         Log.i("clima", "checkSelfPermission " + permission + " " + requestCode);
         if (ContextCompat.checkSelfPermission(this,
@@ -570,7 +577,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
     private void updateUI() {
 
-        if (callChannelId != null) {
+        if (!isConnected) {
             mCallerName.setText(user != null ? user.getNameToDisplay() : "call.getRemoteUserId()");
             myTxtCalling.setText(getResources().getString(R.string.app_name) + (isVideoCall ? " Video Calling" : " Voice Calling"));
 

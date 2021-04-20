@@ -12,7 +12,7 @@ import com.daasuu.ahp.AnimateHorizontalProgressBar;
 public class SplashActivity extends AppCompatActivity {
 
 
-    public static int CALL_STATUS = 0;
+
 
 
     @Override

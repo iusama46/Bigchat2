@@ -42,22 +42,6 @@ public class PrivacyPolicyActivity extends AppCompatActivity {
             }
         });
 
-        try {
-            String token = FirebaseInstanceId.getInstance().getToken();
-            String uId = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
-            DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(uId);
-            reference.child("token").setValue(token).addOnCompleteListener(new OnCompleteListener<Void>() {
-                @Override
-                public void onComplete(@NonNull Task<Void> task) {
-                    if (task.isSuccessful())
-                        Log.d("clima", "token saved");
-                    else
-                        Log.d("clima", "token failed");
-                }
-            });
-        } catch (Exception e) {
-            Log.d("clima e", e.getMessage());
-        }
     }
 
 
