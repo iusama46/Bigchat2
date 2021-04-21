@@ -53,6 +53,7 @@ import java.util.HashMap;
 import io.agora.rtc.Constants;
 import io.agora.rtc.IRtcEngineEventHandler;
 import io.agora.rtc.RtcEngine;
+import io.agora.rtc.models.UserInfo;
 import io.agora.rtc.video.VideoCanvas;
 
 /**
@@ -106,6 +107,12 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     private Sensor mProximity;
     private RtcEngine mRtcEngine;
     private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
+
+        @Override
+        public void onUserInfoUpdated(int uid, UserInfo userInfo) {
+            super.onUserInfoUpdated(uid, userInfo);
+
+        }
 
         @Override
         public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
@@ -273,7 +280,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
         inOrOut = intent.getStringExtra(EXTRA_DATA_IN_OR_OUT);
 
-        //todo check
+        //todo check later for incoming call
         if (inOrOut.equals("IN")) {
             roomToken = intent.getStringExtra("room_token");
             key = intent.getStringExtra("key");
@@ -409,9 +416,6 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
             mRtcEngine.leaveChannel();
             if (isVideoCall)
                 mRtcEngine.stopPreview();
-            RtcEngine.destroy();
-            mRtcEngine = null;
-
             saveLog();
 
             try {
@@ -444,6 +448,9 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
         if (valueEventListener != null)
             referenceDb.removeEventListener(valueEventListener);
+
+        RtcEngine.destroy();
+        mRtcEngine = null;
         super.onDestroy();
     }
 
@@ -462,6 +469,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     }
 
     void onZegoCreated() {
+
         if (isVideoCall && !checkSelfPermission(REQUESTED_PERMISSIONS[0], PERMISSION_REQ_ID) &&
                 checkSelfPermission(REQUESTED_PERMISSIONS[1], PERMISSION_REQ_ID) &&
                 checkSelfPermission(REQUESTED_PERMISSIONS[2], PERMISSION_REQ_ID)) {
@@ -488,6 +496,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
         //todo room token for incomming
         mRtcEngine.joinChannel(accessToken, "testChannel", "Extra Optional Data", 0);
+
         if (isVideoCall) {
             setVolumeControlStream(AudioManager.STREAM_SYSTEM);
             isSpeaker = true;

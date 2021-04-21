@@ -467,9 +467,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         }
 
         if (isLoggedIn) {
-            if (isVideoCall)
-                RtcEngine.destroy();
-            mRtcEngine = null;
 
             try {
                 if (!inOrOut.equals("IN")) {
@@ -489,6 +486,8 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         } catch (RuntimeException ex) {
         }
 
+        RtcEngine.destroy();
+        mRtcEngine = null;
         super.onDestroy();
     }
 
