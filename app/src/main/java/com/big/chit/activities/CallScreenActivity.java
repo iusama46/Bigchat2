@@ -47,7 +47,6 @@ import com.google.firebase.database.ValueEventListener;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 
 import io.agora.rtc.Constants;
@@ -77,7 +76,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     };
     private static final int PERMISSION_REQ_ID = 22;
 
-    String callChannelId = "room";
+    String roomId = "room";
     PowerManager.WakeLock wlOff = null, wlOn = null;
     boolean isConnected = false;
 
@@ -91,7 +90,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     SurfaceView mLocalView, mRemoteView;
     String roomToken = "";
     String key = "123";
-    String accessToken = "";
+
     boolean isDenied = false;
     private Chronometer mCallDuration;
     private AudioPlayer mAudioPlayer;
@@ -113,6 +112,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
             super.onUserInfoUpdated(uid, userInfo);
 
         }
+
 
         @Override
         public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
@@ -197,12 +197,12 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
     };
 
-    public static Intent newIntent(Context context, User user, String inOrOut, boolean callIsVideo, String token, String roomToken, String key) {
+    public static Intent newIntent(Context context, User user, String inOrOut, boolean callIsVideo, String roomId, String roomToken, String key) {
         Intent intent = new Intent(context, CallScreenActivity.class);
         intent.putExtra(EXTRA_DATA_USER, user);
         intent.putExtra(EXTRA_DATA_IN_OR_OUT, inOrOut);
         intent.putExtra("callIsVideo", callIsVideo);
-        intent.putExtra("token", token);
+        intent.putExtra("token", roomId);
         intent.putExtra("room_token", roomToken);
         intent.putExtra("key", key);
         return intent;
@@ -281,8 +281,9 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         inOrOut = intent.getStringExtra(EXTRA_DATA_IN_OR_OUT);
 
         //todo check later for incoming call
+        roomToken = intent.getStringExtra("room_token");
+        roomId = intent.getStringExtra("token");
         if (inOrOut.equals("IN")) {
-            roomToken = intent.getStringExtra("room_token");
             key = intent.getStringExtra("key");
         }
         isVideoCall = intent.getBooleanExtra("callIsVideo", false);
@@ -364,8 +365,8 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         datamap.put("is_video", isVideoCall);
         datamap.put("is_group", false);
         datamap.put("call_status", 0);
-        datamap.put("channel_id", callChannelId);
-        datamap.put("channel_token", accessToken);
+        datamap.put("channel_id", roomId);
+        datamap.put("channel_token", roomToken);
         datamap.put("caller_id", userMe.getId());
         datamap.put("caller_name", userMe.getName());
         datamap.put("receiver_id", user.getId());
@@ -492,10 +493,27 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
             return;
         }
 
-        accessToken = Utils.token;
-
         //todo room token for incomming
-        mRtcEngine.joinChannel(accessToken, "testChannel", "Extra Optional Data", 0);
+        Log.d("clima cha", roomId);
+        Log.d("clima chal", roomToken);
+//        if (!inOrOut.equals("IN")) {
+//            new java.util.Timer().schedule(
+//
+//                    new java.util.TimerTask() {
+//                        @Override
+//                        public void run() {
+//                            runOnUiThread(new Runnable() {
+//                                public void run() {
+//                                    mRtcEngine.joinChannel(roomToken, roomId, "Extra Optional Data", 0);
+//                                }
+//                            });
+//                        }
+//                    },
+//                    1200
+//            );
+//        } else {
+        mRtcEngine.joinChannel(roomToken, roomId, "Extra Optional Data", 0);
+        //}
 
         if (isVideoCall) {
             setVolumeControlStream(AudioManager.STREAM_SYSTEM);
@@ -517,15 +535,13 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         isMute();
         enableSpeaker(isSpeaker);
 
-        String randomSuffix = String.valueOf(new Date().getTime() % (new Date().getTime() / 1000));
+        //String randomSuffix = String.valueOf(new Date().getTime() % (new Date().getTime() / 1000));
+//        if (!inOrOut.equals("IN"))
+//            roomId = roomId + userMe.getId() + randomSuffix;
 
-        if (!inOrOut.equals("IN"))
-            callChannelId = callChannelId + userMe.getId() + randomSuffix;
+        if (roomId != null) {
 
-
-        if (callChannelId != null) {
-
-            mCallerName.setText(user != null ? user.getNameToDisplay() : "call.getRemoteUserId()");
+            mCallerName.setText(user != null ? user.getNameToDisplay() : user.getId());
             mCallState.setText("call.getState().toString()");
             if (user != null) {
 //                Glide.with(this).load(user.getImage()).apply(new RequestOptions().placeholder(R.drawable.ic_logo_)).into(userImage1);
@@ -587,7 +603,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     private void updateUI() {
 
         if (!isConnected) {
-            mCallerName.setText(user != null ? user.getNameToDisplay() : "call.getRemoteUserId()");
+            mCallerName.setText(user != null ? user.getNameToDisplay() : user.getId());
             myTxtCalling.setText(getResources().getString(R.string.app_name) + (isVideoCall ? " Video Calling" : " Voice Calling"));
 
             tintBlue.setVisibility(isVideoCall ? View.GONE : View.VISIBLE);

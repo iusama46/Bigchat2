@@ -57,6 +57,11 @@ import android.widget.TableLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.big.chit.BaseApplication;
 import com.big.chit.R;
 import com.big.chit.adapters.MessageAdapter;
@@ -91,7 +96,6 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseException;
 import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -133,6 +137,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 
 import io.realm.Realm;
 import io.realm.RealmChangeListener;
@@ -158,6 +163,19 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     private static final String EXTRA_DATA_USER = "extradatauser";
     private static final String EXTRA_DATA_LIST = "extradatalist";
     private static final String DELETE_TAG = "deletetag";
+    private final ArrayList<Message> dataList = new ArrayList<>();
+    private final ArrayList<Integer> adapterPositions = new ArrayList<>();
+    private final boolean deleteGroup = false;
+    //Download event listener
+    private final BroadcastReceiver downloadEventReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            DownloadFileEvent downloadFileEvent = intent.getParcelableExtra("data");
+            if (downloadFileEvent != null) {
+                downloadFile(downloadFileEvent);
+            }
+        }
+    };
     boolean isTokenReceived = false;
     String token = "";
     String senderIdDelete = "";
@@ -166,47 +184,8 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     String msgID = "", newMsgID = "";
     long dateDelete;
     boolean isGroup = false;
+    String roomUid = "test";
     private MessageAdapter messageAdapter;
-    private final ArrayList<Message> dataList = new ArrayList<>();
-    private RealmResults<Chat> queryResult;
-    private String chatChild, userOrGroupId;
-    private int countSelected = 0;
-    private Handler recordWaitHandler, recordTimerHandler;
-    private Runnable recordRunnable, recordTimerRunnable;
-    private MediaRecorder mRecorder = null;
-    private String recordFilePath;
-    private float displayWidth;
-    private boolean callIsVideo;
-    private final ArrayList<Integer> adapterPositions = new ArrayList<>();
-    private MediaPlayer mediaPlayer = new MediaPlayer();
-    private String currentlyPlaying = "";
-    private Toolbar toolbar;
-    private RelativeLayout toolbarContent;
-    private TextView selectedCount, status, userName;
-    private TableLayout addAttachmentLayout;
-    private RecyclerView recyclerView;
-    private EmojiEditText newMessage;
-    private ImageView usersImage, addAttachment, sendMessage, attachment_emoji;
-    private LinearLayout rootView, sendContainer, myAttachmentLLY;
-    private ImageView callAudio, callVideo;
-    private String cameraPhotoPath;
-    private EmojiPopup emojIcon;
-    private String pickerPath;
-    private ImagePicker imagePicker;
-    private CameraImagePicker cameraPicker;
-    private FilePicker filePicker;
-    private AudioPicker audioPicker;
-    private VideoPicker videoPicker;
-    private RelativeLayout replyLay;
-    private TextView replyName;
-    private ImageView replyImg;
-    private ImageView closeReply;
-    private HashMap<String, User> myUsersNameInPhoneMap;
-    private String replyId = "0";
-    private TextView userStatus;
-    private boolean delete = false;
-    private final boolean deleteGroup = false;
-    private ImageView camera;
     //Download complete listener
     private final BroadcastReceiver downloadCompleteReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
@@ -222,75 +201,22 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
                 }
         }
     };
-
-    //Download event listener
-    private final BroadcastReceiver downloadEventReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            DownloadFileEvent downloadFileEvent = intent.getParcelableExtra("data");
-            if (downloadFileEvent != null) {
-                downloadFile(downloadFileEvent);
-            }
-        }
-    };
-    private final View.OnTouchListener voiceMessageListener = new View.OnTouchListener() {
-        @Override
-        public boolean onTouch(View v, MotionEvent event) {
-            int x = (int) event.getX();
-            int y = (int) event.getY();
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    Log.i("TAG", "touched down");
-                    if (newMessage.getText().toString().trim().isEmpty()) {
-                        if (recordWaitHandler == null)
-                            recordWaitHandler = new Handler();
-                        recordRunnable = new Runnable() {
-                            @Override
-                            public void run() {
-                                if (user != null) {
-                                    userMe = helper.getLoggedInUser();
-                                    if (userMe.getBlockedUsersIds() != null
-                                            && !userMe.getBlockedUsersIds().contains(user.getId())) {
-                                        recordingStart();
-                                    } else {
-                                        FragmentManager manager = getSupportFragmentManager();
-                                        Fragment frag = manager.findFragmentByTag(DELETE_TAG);
-                                        if (frag != null) {
-                                            manager.beginTransaction().remove(frag).commit();
-                                        }
-
-                                        Helper.unBlockAlert(user.getNameToDisplay(), userMe, ChatActivity.this,
-                                                helper, user.getId(), manager);
-                                    }
-                                } else {
-                                    recordingStart();
-                                }
-                            }
-                        };
-                        recordWaitHandler.postDelayed(recordRunnable, 600);
-                    }
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    Log.i("TAG", "moving: (" + displayWidth + ", " + x + ")");
-                    if (mRecorder != null && newMessage.getText().toString().trim().isEmpty()) {
-                        if (Math.abs(event.getX()) / displayWidth > 0.35f) {
-                            recordingStop(false);
-                            Toast.makeText(ChatActivity.this, "Recording cancelled", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                    break;
-                case MotionEvent.ACTION_UP:
-                    Log.i("TAG", "touched up");
-                    if (recordWaitHandler != null && newMessage.getText().toString().trim().isEmpty())
-                        recordWaitHandler.removeCallbacks(recordRunnable);
-                    if (mRecorder != null && newMessage.getText().toString().trim().isEmpty()) {
-                        recordingStop(true);
-                    }
-                    break;
-            }
-            return false;
-        }
-    };
+    private RealmResults<Chat> queryResult;
+    private String chatChild, userOrGroupId;
+    private int countSelected = 0;
+    private Handler recordWaitHandler, recordTimerHandler;
+    private Runnable recordRunnable, recordTimerRunnable;
+    private MediaRecorder mRecorder = null;
+    private String recordFilePath;
+    private float displayWidth;
+    private boolean callIsVideo;
+    private MediaPlayer mediaPlayer = new MediaPlayer();
+    private String currentlyPlaying = "";
+    private Toolbar toolbar;
+    private RelativeLayout toolbarContent;
+    private TextView selectedCount, status, userName;
+    private TableLayout addAttachmentLayout;
+    private RecyclerView recyclerView;
     private final RealmChangeListener<RealmResults<Chat>> realmChangeListener = new RealmChangeListener<RealmResults<Chat>>() {
         @Override
         public void onChange(RealmResults<Chat> element) {
@@ -382,6 +308,85 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
             }
         }
     };
+    private EmojiEditText newMessage;
+    private ImageView usersImage, addAttachment, sendMessage, attachment_emoji;
+    private LinearLayout rootView, sendContainer, myAttachmentLLY;
+    private ImageView callAudio, callVideo;
+    private String cameraPhotoPath;
+    private EmojiPopup emojIcon;
+    private String pickerPath;
+    private ImagePicker imagePicker;
+    private CameraImagePicker cameraPicker;
+    private FilePicker filePicker;
+    private AudioPicker audioPicker;
+    private VideoPicker videoPicker;
+    private RelativeLayout replyLay;
+    private TextView replyName;
+    private ImageView replyImg;
+    private ImageView closeReply;
+    private HashMap<String, User> myUsersNameInPhoneMap;
+    private String replyId = "0";
+    private final View.OnTouchListener voiceMessageListener = new View.OnTouchListener() {
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+            int x = (int) event.getX();
+            int y = (int) event.getY();
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    Log.i("TAG", "touched down");
+                    if (newMessage.getText().toString().trim().isEmpty()) {
+                        if (recordWaitHandler == null)
+                            recordWaitHandler = new Handler();
+                        recordRunnable = new Runnable() {
+                            @Override
+                            public void run() {
+                                if (user != null) {
+                                    userMe = helper.getLoggedInUser();
+                                    if (userMe.getBlockedUsersIds() != null
+                                            && !userMe.getBlockedUsersIds().contains(user.getId())) {
+                                        recordingStart();
+                                    } else {
+                                        FragmentManager manager = getSupportFragmentManager();
+                                        Fragment frag = manager.findFragmentByTag(DELETE_TAG);
+                                        if (frag != null) {
+                                            manager.beginTransaction().remove(frag).commit();
+                                        }
+
+                                        Helper.unBlockAlert(user.getNameToDisplay(), userMe, ChatActivity.this,
+                                                helper, user.getId(), manager);
+                                    }
+                                } else {
+                                    recordingStart();
+                                }
+                            }
+                        };
+                        recordWaitHandler.postDelayed(recordRunnable, 600);
+                    }
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    Log.i("TAG", "moving: (" + displayWidth + ", " + x + ")");
+                    if (mRecorder != null && newMessage.getText().toString().trim().isEmpty()) {
+                        if (Math.abs(event.getX()) / displayWidth > 0.35f) {
+                            recordingStop(false);
+                            Toast.makeText(ChatActivity.this, "Recording cancelled", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                    Log.i("TAG", "touched up");
+                    if (recordWaitHandler != null && newMessage.getText().toString().trim().isEmpty())
+                        recordWaitHandler.removeCallbacks(recordRunnable);
+                    if (mRecorder != null && newMessage.getText().toString().trim().isEmpty()) {
+                        recordingStop(true);
+                    }
+                    break;
+            }
+            return false;
+        }
+    };
+    private TextView userStatus;
+    private boolean delete = false;
+    private ImageView camera;
 
     public static Intent newIntent(Context context, ArrayList<Message> forwardMessages, User
             user) {
@@ -427,7 +432,6 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     void groupAdded(Group valueGroup) {
         //do nothing
     }
-
 
     @Override
     void userUpdated(User valueUser) {
@@ -495,6 +499,8 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         }
 
         initUi();
+        roomUid = getRoomId();
+        pushNotification(roomUid);
 
         //set basic user info
         String nameText = null, statusText = null, imageUrl = null;
@@ -627,6 +633,22 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         checkAndForward();
         initSwipe();
 
+    }
+
+    String getRoomId() {
+        String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        StringBuilder sb = new StringBuilder();
+        Random random = new Random();
+        int length = 7;
+
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(alphabet.length());
+            char randomChar = alphabet.charAt(index);
+            sb.append(randomChar);
+        }
+
+        return sb.toString().toLowerCase();
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -857,7 +879,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
 
             if (!isGroup) {
                 isTokenReceived = true;
-                token ="test";
+                //token = "test";
             }
 //                DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
 //                try {
@@ -885,16 +907,57 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
 //            }
         } else {
             userStatus.setText("tap here for group info");
-
             isGroup = true;
             callAudio.setClickable(true);
             callVideo.setClickable(true);
             callAudio.setVisibility(View.VISIBLE);
             callVideo.setVisibility(View.VISIBLE);
+        }
 
 
+    }
+
+    private void pushNotification(String uId) {
+        try {
+
+            RequestQueue queue = Volley.newRequestQueue(this);
+
+            String url = "https://agoratokenbig.herokuapp.com/access_token?channel=" + uId;
+
+            StringRequest request = new StringRequest(url, new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+
+                    if (response != null) {
+                        try {
+                            JSONObject jsonObject = new JSONObject(response);
+                            token = jsonObject.getString("token");
+                            Log.d("clima token", token);
+                            Log.d("clima uid", roomUid);
+                            isTokenReceived = true;
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+
+                }
+
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    isTokenReceived = false;
+                }
+            });
+
+            queue.add(request);
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
+
 
     @Override
     protected void onPause() {
@@ -1397,17 +1460,18 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     }
 
     private void makeCall() {
-        if (isGroup) {
-            Log.d("clima", group.getId());
-            Log.d("clima", group.getUserIds().toString());
-            startActivity(GroupCallActivity.newIntent(this, group, "callId", "OUT", callIsVideo,token,"test","key"));
-            return;
-        }
-
         if (!isTokenReceived) {
             Toast.makeText(this, "Unable to make call", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        if (isGroup) {
+            Log.d("clima", group.getId());
+            Log.d("clima", group.getUserIds().toString());
+            startActivity(GroupCallActivity.newIntent(this, group, "callId", "OUT", callIsVideo, roomUid, token, "key"));
+            return;
+        }
+
         userMe = helper.getLoggedInUser();
 
         if (user != null && userMe != null && userMe.getBlockedUsersIds() != null
@@ -1429,15 +1493,12 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
             try {
 
                 if (user == null) {
-                    // Service failed for some reason, show a Toast and abort
                     Toast.makeText(this, "Service is not started. Try stopping the service and starting it again before placing a call.", Toast.LENGTH_LONG).show();
                     return;
                 }
-                String callId = "room";
-                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, token,"token","key"));
+                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, roomUid, token, "key"));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());
-                //ActivityCompat.requestPermissions(this, new String[]{e.getRequiredPermission()}, 0);
             }
         } else {
             ActivityCompat.requestPermissions(this, permissionsSinch, 69);

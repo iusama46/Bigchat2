@@ -93,7 +93,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     private final boolean mIsLandscape = false;
     public int mLayoutType = LAYOUT_TYPE_DEFAULT;
     int configUid = 0;
-    String callRoomId = "group";
+    String roomId = "group";
     PowerManager.WakeLock wlOff = null, wlOn = null;
     boolean isConnected = false;
     boolean isSpeaker = false;
@@ -105,7 +105,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     boolean isLoggedIn = false;
     RelativeLayout remoteVideo2;
 
-    String key, accessToken;
+    String key;
     FrameLayout remoteVideo;
     private SmallVideoViewAdapter mSmallVideoViewAdapter;
     private GridVideoViewContainer mGridVideoViewContainer;
@@ -233,7 +233,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     private LinearLayout mySwitchCameraLLY;
     private SensorManager mSensorManager;
     private Sensor mProximity;
-    private String receiverToken, roomToken;
+    private String  roomToken;
     private Handler myHandler;
     private Runnable myRunnable = new Runnable() {
         @Override
@@ -316,7 +316,8 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         group = intent.getParcelableExtra(EXTRA_DATA_USER);
         mCallId = intent.getStringExtra("CALL_ID");
         inOrOut = intent.getStringExtra(EXTRA_DATA_IN_OR_OUT);
-        receiverToken = intent.getStringExtra("token");
+        roomToken = intent.getStringExtra("room_token");
+        roomId = intent.getStringExtra("token");
         if (inOrOut.equals("IN"))
             key = intent.getStringExtra("key");
         //todo check
@@ -412,8 +413,8 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                         hashMap.put("is_video", isVideoCall);
                         hashMap.put("is_group", true);
                         hashMap.put("call_status", 0);
-                        hashMap.put("channel_id", callRoomId);
-                        hashMap.put("channel_token", accessToken);
+                        hashMap.put("channel_id", roomId);
+                        hashMap.put("channel_token", roomToken);
                         hashMap.put("caller_id", group.getId());
                         hashMap.put("caller_name", group.getName());
                         hashMap.put("receiver_id", group.getId());
@@ -503,8 +504,8 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         datamap.put("is_video", isVideoCall);
         datamap.put("is_group", true);
         datamap.put("call_status", 0);
-        datamap.put("channel_id", callRoomId);
-        datamap.put("channel_token", accessToken);
+        datamap.put("channel_id", roomId);
+        datamap.put("channel_token", roomToken);
         datamap.put("caller_id", group.getId());
         datamap.put("caller_name", group.getName());
         datamap.put("receiver_id", group.getId());
@@ -554,7 +555,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             return;
         }
 
-        accessToken = Utils.token;
         String uId = userMe.getId().substring(userMe.getId().length() - 5);
         configUid = Integer.parseInt(uId);
 
@@ -589,7 +589,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             mGridVideoViewContainer.initViewContainer(this, configUid, muIdsList, mIsLandscape); // first is now full view
 
         }
-        mRtcEngine.joinChannel(accessToken, "testChannel", "Extra Optional Data", 0);
+        mRtcEngine.joinChannel(roomToken, roomId, "Extra Optional Data", 0);
         if (isVideoCall) {
             setVolumeControlStream(AudioManager.STREAM_SYSTEM);
             isSpeaker = true;
@@ -606,12 +606,12 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         isMute();
         enableSpeaker(isSpeaker);
 
-        String randomSuffix = String.valueOf(new Date().getTime() % (new Date().getTime() / 1000));
+        //String randomSuffix = String.valueOf(new Date().getTime() % (new Date().getTime() / 1000));
 
-        if (!inOrOut.equals("IN"))
-            callRoomId = callRoomId + userMe.getId() + randomSuffix;
+//        if (!inOrOut.equals("IN"))
+//            roomId = roomId + userMe.getId() + randomSuffix;
 
-        if (callRoomId != null) {
+        if (roomId != null) {
             mCallerName.setText(group != null ? group.getName() : "2 People");
 
             if (group != null) {
@@ -693,7 +693,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     }
 
     void updateUI() {
-        if (callRoomId != null) {
+        if (roomId != null) {
             myTxtCalling.setText(getResources().getString(R.string.app_name) + (isVideoCall ? " Video Calling" : " Voice Calling"));
             tintBlue.setVisibility(isVideoCall ? View.GONE : View.VISIBLE);
             localVideo.setVisibility(!isVideoCall ? View.GONE : View.VISIBLE);

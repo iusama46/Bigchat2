@@ -3,15 +3,9 @@ package com.big.chit.activities;
 import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityOptions;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.ProgressDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -22,7 +16,6 @@ import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -30,7 +23,6 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -45,6 +37,7 @@ import com.big.chit.fragments.MyCallsFragment;
 import com.big.chit.fragments.MyGroupsFragment;
 import com.big.chit.fragments.MyStatusFragmentNew;
 import com.big.chit.fragments.MyUsersFragment;
+import com.big.chit.fragments.OptionsFragment;
 import com.big.chit.fragments.UserSelectDialogFragment;
 import com.big.chit.interfaces.ContextualModeInteractor;
 import com.big.chit.interfaces.HomeIneractor;
@@ -52,7 +45,6 @@ import com.big.chit.interfaces.OnUserGroupItemClick;
 import com.big.chit.interfaces.UserGroupSelectionDismissListener;
 import com.big.chit.models.Contact;
 import com.big.chit.models.Group;
-import com.big.chit.models.LogCall;
 import com.big.chit.models.Message;
 import com.big.chit.models.Status;
 import com.big.chit.models.User;
@@ -64,13 +56,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.iid.FirebaseInstanceId;
-import com.google.firebase.messaging.FirebaseMessaging;
 import com.mxn.soul.flowingdrawer_core.ElasticDrawer;
 import com.mxn.soul.flowingdrawer_core.FlowingDrawer;
 import com.squareup.picasso.Picasso;
@@ -78,7 +64,6 @@ import com.squareup.picasso.Picasso;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 
 import io.realm.Realm;
 
@@ -151,149 +136,20 @@ public class MainActivity extends BaseActivity implements HomeIneractor, OnUserG
         floatingActionButton.setVisibility(View.VISIBLE);
 
 
-        if (getIntent().getExtras() != null) {
-            for (String key : getIntent().getExtras().keySet()) {
-                String value = getIntent().getExtras().getString(key);
-                Log.d("clima 2 ", "Key: " + key + " Value: " + value);
-            }
-        }
+//        if (getIntent().getExtras() != null) {
+//            for (String key : getIntent().getExtras().keySet()) {
+//                String value = getIntent().getExtras().getString(key);
+//                Log.d("clima 2 ", "Key: " + key + " Value: " + value);
+//            }
+//        }
 
         setupViewPager();
         fetchContacts();
         markOnline(true);
 
-//        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data");
-//        String ph = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
-//        //ph="+923104772882";
-//        try {
-//            reference.child("call_zego").child(ph).addValueEventListener(new ValueEventListener() {
-//                @Override
-//                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-//
-//                    if (dataSnapshot.getChildrenCount() > 0) {
-//                        if (dataSnapshot.getKey().equals(ph.toString())) {
-//                            if( dataSnapshot.child("answered").getValue()==null || dataSnapshot.child("canceled").getValue()==null || dataSnapshot.child("video").getValue()==null
-//                            || dataSnapshot.child("isGroup").getValue()==null){
-//                                reference.child("call_zego").child(ph).removeValue();
-//                                return;
-//                            }
-//                            boolean value = (boolean) dataSnapshot.child("answered").getValue();
-//                            boolean cancel = (boolean) dataSnapshot.child("canceled").getValue();
-//                            isVideo = (boolean) dataSnapshot.child("video").getValue();
-//                            callerId = dataSnapshot.child("uId").getValue().toString();
-//                            RoomId = dataSnapshot.child("room").getValue().toString();
-//                            name = dataSnapshot.child("name").getValue().toString();
-//
-//                            boolean isGroup = (boolean) dataSnapshot.child("isGroup").getValue();
-//                            if (isGroup && value) {
-//                                if (value && !cancel) {
-//                                    //Toast.makeText(MainActivity.this, "true group", Toast.LENGTH_SHORT).show();
-//                                    startActivity(new Intent(MainActivity.this, GroupIncomingActivity.class));
-//                                    return;
-//                                } else if(!value &&!cancel){
-//                                    notifyMisscall();
-//                                    return;
-//                                }
-//
-//                            } else {
-//                                if (value && !cancel && !isGroup) {
-//                                    //Toast.makeText(MainActivity.this, "true", Toast.LENGTH_SHORT).show();
-//                                    startActivity(new Intent(MainActivity.this, IncomingCallScreenActivity.class));
-//                                } else if(!value &&!cancel){
-//                                    //Toast.makeText(MainActivity.this, "missed Call", Toast.LENGTH_SHORT).show();
-//                                    HashMap<String, User> myUsers = helper.getCacheMyUsers();
-//                                    if (myUsers != null && myUsers.containsKey(callerId)) {
-//                                        user = myUsers.get(callerId);
-//                                    }
-//                                }
-//                                if (!isGroup && !value ) {
-//                                    LogCall logCall = null;
-//                                    if (user == null) {
-//                                        user = new User(MainActivity.callerId, MainActivity.callerId, getString(R.string.app_name), "");
-//                                    }
-//
-//                                    rChatDb.beginTransaction();
-//                                    logCall = new LogCall(user, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), user.getId());
-//                                    rChatDb.copyToRealm(logCall);
-//                                    rChatDb.commitTransaction();
-//                                    notifyMisscall(logCall);
-//                                    DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
-//                                    reference.child(userMe.getId()).removeValue();
-//                                }
-//                            }
-//                        }
-//                    }
-//
-//                }
-//
-//                @Override
-//                public void onCancelled(@NonNull DatabaseError databaseError) {
-//
-//                }
-//            });
-//        } catch (Exception e) {
-//
-//        }
 //          loadAdd();
     }
-    public  static  boolean isVideo =false;
-//    private void notifyMisscall(LogCall logCall) {
-//        PendingIntent pendingIntent = PendingIntent.getActivity(this, 56, new Intent(this, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
-//
-//        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-//        NotificationCompat.Builder notificationBuilder = null;
-//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-//            NotificationChannel channel = new NotificationChannel(CHANNEL_ID_USER_MISSCALL, "ChatBuddy Chat misscall notification", NotificationManager.IMPORTANCE_DEFAULT);
-//            notificationManager.createNotificationChannel(channel);
-//            notificationBuilder = new NotificationCompat.Builder(this, CHANNEL_ID_USER_MISSCALL);
-//        } else {
-//            notificationBuilder = new NotificationCompat.Builder(this);
-//        }
-//
-//        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-//        notificationBuilder.setSmallIcon(R.drawable.ic_logo_)
-//                .setContentTitle(logCall.getUser().getNameToDisplay())
-//                .setContentText("Gave you a miss call")
-//                .setAutoCancel(true)
-//                .setSound(defaultSoundUri)
-//                .setContentIntent(pendingIntent);
-//        int msgId = 0;
-//        try {
-//            msgId = Integer.parseInt(logCall.getUser().getId());
-//        } catch (NumberFormatException ex) {
-//            msgId = Integer.parseInt(logCall.getUser().getId().substring(logCall.getUser().getId().length() / 2));
-//        }
-//        notificationManager.notify(msgId, notificationBuilder.build());
-//    }
 
-    private void notifyMisscall() {
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 56, new Intent(this, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
-
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        NotificationCompat.Builder notificationBuilder = null;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID_USER_MISSCALL, "ChatBuddy Chat misscall notification", NotificationManager.IMPORTANCE_DEFAULT);
-            notificationManager.createNotificationChannel(channel);
-            notificationBuilder = new NotificationCompat.Builder(this, CHANNEL_ID_USER_MISSCALL);
-        } else {
-            notificationBuilder = new NotificationCompat.Builder(this);
-        }
-
-        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-        notificationBuilder.setSmallIcon(R.drawable.ic_logo_)
-                .setContentTitle(name)
-                .setContentText("Gave you a miss call")
-                .setAutoCancel(true)
-                .setSound(defaultSoundUri)
-                .setContentIntent(pendingIntent);
-        int msgId = 0;
-        try {
-            msgId = Integer.parseInt(callerId);
-        } catch (NumberFormatException ex) {
-            msgId = 1;
-        }
-        notificationManager.notify(msgId, notificationBuilder.build());
-    }
 
     private void initUi() {
         usersImage = findViewById(R.id.users_image);
@@ -691,8 +547,9 @@ public class MainActivity extends BaseActivity implements HomeIneractor, OnUserG
                 break;
             case R.id.users_image:
                 if (userMe != null)
-                    //OptionsFragment.newInstance(getSinchServiceInterface()).show(getSupportFragmentManager(), OPTIONS_MORE);
-                    break;
+//                    startActivity(new Intent(MainActivity.this, UserInfoActivity.class));
+                    OptionsFragment.newInstance(getSinchServiceInterface()).show(getSupportFragmentManager(), OPTIONS_MORE);
+                break;
             case R.id.invite:
                 try {
                     Intent shareIntent = new Intent(Intent.ACTION_SEND);

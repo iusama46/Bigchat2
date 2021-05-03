@@ -32,6 +32,7 @@ import com.big.chit.activities.SignInActivity;
 import com.big.chit.models.Attachment;
 import com.big.chit.models.AttachmentTypes;
 import com.big.chit.models.User;
+import com.big.chit.services.SinchService;
 import com.big.chit.utils.ConfirmationDialogFragment;
 import com.big.chit.utils.FirebaseUploader;
 import com.big.chit.utils.Helper;
@@ -62,7 +63,7 @@ public class OptionsFragment extends BaseFullDialogFragment implements ImagePick
     protected String[] permissionsCamera = {Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE};
     // private DatabaseReference usersRef, dataRef;
-    //private SinchService.SinchServiceInterface sinchServiceInterface;
+    private SinchService.SinchServiceInterface sinchServiceInterface;
     ProgressBar myProgressBar;
     TextView tvVersion;
     private User userMe;
@@ -74,11 +75,11 @@ public class OptionsFragment extends BaseFullDialogFragment implements ImagePick
     private Context context;
     private boolean fromFlag = false;
 
-//    public static OptionsFragment newInstance(SinchService.SinchServiceInterface sinchServiceInterface) {
-//        OptionsFragment fragment = new OptionsFragment();
-//        fragment.sinchServiceInterface = sinchServiceInterface;
-//        return fragment;
-//    }
+    public static OptionsFragment newInstance(SinchService.SinchServiceInterface sinchServiceInterface) {
+        OptionsFragment fragment = new OptionsFragment();
+        fragment.sinchServiceInterface = sinchServiceInterface;
+        return fragment;
+    }
 
     @Override
     public void onAttach(Context context) {

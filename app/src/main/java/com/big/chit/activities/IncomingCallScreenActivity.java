@@ -106,6 +106,9 @@ public class IncomingCallScreenActivity extends BaseActivity {
         Intent intent = getIntent();
         mCallerId = intent.getStringExtra("caller_id");
         //mCallerId = intent.getStringExtra("caller_id");
+        user = intent.getParcelableExtra("user");
+        Log.d("clima", user.getId());
+        Log.d("clima", user.getNameToDisplay());
         mRoomId = intent.getStringExtra("room_id");
         roomToken = intent.getStringExtra("room_token");
         key = intent.getStringExtra("key");
@@ -127,6 +130,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
         ImageView userImage1 = findViewById(R.id.userImage1);
         ImageView userImage2 = findViewById(R.id.userImage2);
         remoteUser.setText(user != null ? user.getNameToDisplay() : mCallerId);
+
         if (user != null && !user.getImage().isEmpty()) {
 //                Glide.with(this).load(user.getImage()).apply(new RequestOptions().placeholder(R.drawable.ic_placeholder)).into(userImage1);
 //                Glide.with(this).load(user.getImage()).apply(RequestOptions.circleCropTransform().placeholder(R.drawable.ic_placeholder)).into(userImage2);
@@ -161,7 +165,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
                                 mAudioPlayer.stopRingtone();
                                 LogCall logCall = null;
                                 if (user != null) {
-                                    //     user = new User(mCallerId, mCallerId, getString(R.string.app_name), "");
+                                         //user = new User(mCallerId, mCallerId, getString(R.string.app_name), "");
                                     rChatDb.beginTransaction();
                                     logCall = new LogCall(user, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), user.getId());
                                     rChatDb.copyToRealm(logCall);
@@ -241,34 +245,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
         return available;
     }
 
-    private void notifyMisscall(LogCall logCall) {
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 56, new Intent(this, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
 
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        NotificationCompat.Builder notificationBuilder = null;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID_USER_MISSCALL, "Dreams Chat misscall notification", NotificationManager.IMPORTANCE_DEFAULT);
-            notificationManager.createNotificationChannel(channel);
-            notificationBuilder = new NotificationCompat.Builder(this, CHANNEL_ID_USER_MISSCALL);
-        } else {
-            notificationBuilder = new NotificationCompat.Builder(this);
-        }
-
-        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-        notificationBuilder.setSmallIcon(R.drawable.ic_logo_)
-                .setContentTitle(logCall.getUser().getNameToDisplay())
-                .setContentText("Gave you a miss call")
-                .setAutoCancel(true)
-                .setSound(defaultSoundUri)
-                .setContentIntent(pendingIntent);
-        int msgId = 0;
-        try {
-            msgId = Integer.parseInt(logCall.getUser().getId());
-        } catch (NumberFormatException ex) {
-            msgId = Integer.parseInt(logCall.getUser().getId().substring(logCall.getUser().getId().length() / 2));
-        }
-        notificationManager.notify(msgId, notificationBuilder.build());
-    }
 
     @Override
     void myUsersResult(ArrayList<User> myUsers) {

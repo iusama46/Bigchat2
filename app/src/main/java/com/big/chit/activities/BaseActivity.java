@@ -22,6 +22,7 @@ import com.big.chit.models.Group;
 import com.big.chit.models.Status;
 import com.big.chit.models.User;
 import com.big.chit.services.FirebaseChatService;
+import com.big.chit.services.SinchService;
 import com.big.chit.utils.Helper;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.database.DatabaseReference;
@@ -141,6 +142,8 @@ public abstract class BaseActivity extends AppCompatActivity implements ServiceC
 
     //abstract void onSinchDisconnected();
 
+
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -168,9 +171,12 @@ public abstract class BaseActivity extends AppCompatActivity implements ServiceC
         }
 
         startService(new Intent(this, FirebaseChatService.class));
-        //   getApplicationContext().bindService(new Intent(this, SinchService.class), this, BIND_AUTO_CREATE);
+           getApplicationContext().bindService(new Intent(this, SinchService.class), this, BIND_AUTO_CREATE);
     }
-
+    private SinchService.SinchServiceInterface mSinchServiceInterface;
+    protected SinchService.SinchServiceInterface getSinchServiceInterface() {
+        return mSinchServiceInterface;
+    }
     @Override
     protected void onResume() {
         super.onResume();
@@ -191,10 +197,12 @@ public abstract class BaseActivity extends AppCompatActivity implements ServiceC
 
     @Override
     public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+        mSinchServiceInterface = (SinchService.SinchServiceInterface) iBinder;
     }
 
     @Override
     public void onServiceDisconnected(ComponentName componentName) {
+        mSinchServiceInterface = null;
     }
 
     protected boolean permissionsAvailable(String[] permissions) {

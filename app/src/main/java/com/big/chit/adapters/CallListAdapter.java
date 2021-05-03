@@ -88,7 +88,7 @@ public class CallListAdapter extends RecyclerView.Adapter<CallListAdapter.ViewHo
         viewHolder.audioCall.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                ((CallListActivity) context).makeCall(true, user);
+                ((CallListActivity) context).makeCall(false, user);
             }
         });
 

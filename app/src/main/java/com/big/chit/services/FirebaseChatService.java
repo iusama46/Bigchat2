@@ -375,8 +375,11 @@ public class FirebaseChatService extends Service {
         if (myUsers != null && myUsers.containsKey(callerId)) {
             userCaller = myUsers.get(callerId);
             contactName = userCaller.getNameToDisplay();
+
         } else {
             contactName = callerId;
+            userCaller= new User(callerId,callerId,"","");
+            Log.d("clima user ",userCaller.getId());
         }
 
         if (isGroup && !isMissedCall) {
@@ -399,6 +402,7 @@ public class FirebaseChatService extends Service {
             intent.putExtra("room_id", roomId);
             intent.putExtra("caller_id", callerId);
             intent.putExtra("key", dataSnapshot.getKey());
+            intent.putExtra("user",userCaller);
 
             createNotificationForCall(intent, contactName, "Incoming " + callType + " Call");
         }

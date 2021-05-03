@@ -18,6 +18,11 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.big.chit.R;
 import com.big.chit.adapters.CallListAdapter;
 import com.big.chit.models.Contact;
@@ -32,7 +37,11 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
+import java.util.Random;
 
 public class CallListActivity extends BaseActivity {
     private final int CONTACTS_REQUEST_CODE = 321;
@@ -46,6 +55,7 @@ public class CallListActivity extends BaseActivity {
     private ImageView back_button;
     private TextView title;
     private Helper helper;
+    private String roomUid;
 
     @Override
     void myUsersResult(ArrayList<User> myUsers) {
@@ -118,8 +128,66 @@ public class CallListActivity extends BaseActivity {
 
         uiInit();
 
+        roomUid = getRoomId();
+        pushNotification(roomUid);
 
 
+
+    }
+    private void pushNotification(String uId) {
+        try {
+
+            RequestQueue queue = Volley.newRequestQueue(this);
+
+            String url = "https://agoratokenbig.herokuapp.com/access_token?channel=" + uId;
+
+            StringRequest request = new StringRequest(url, new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+
+                    if (response != null) {
+                        try {
+                            JSONObject jsonObject = new JSONObject(response);
+                            token = jsonObject.getString("token");
+                            Log.d("clima token", token);
+                            Log.d("clima uid", roomUid);
+                            isTokenReceived = true;
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+
+                }
+
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    isTokenReceived = false;
+                }
+            });
+
+            queue.add(request);
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    String getRoomId() {
+        String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        StringBuilder sb = new StringBuilder();
+        Random random = new Random();
+        int length = 7;
+
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(alphabet.length());
+            char randomChar = alphabet.charAt(index);
+            sb.append(randomChar);
+        }
+
+        return sb.toString().toLowerCase();
     }
 
     private void uiInit() {
@@ -224,7 +292,7 @@ public class CallListActivity extends BaseActivity {
                     return;
                 }
 
-             //   startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, token,"token"));
+                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo,roomUid, token,"key"));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());
                 //ActivityCompat.requestPermissions(this, new String[]{e.getRequiredPermission()}, 0);
