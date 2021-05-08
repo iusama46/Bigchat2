@@ -292,7 +292,7 @@ public class CallListActivity extends BaseActivity {
                     return;
                 }
 
-                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo,roomUid, token,"key"));
+                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo,roomUid, token,"key","token",true));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());
                 //ActivityCompat.requestPermissions(this, new String[]{e.getRequiredPermission()}, 0);

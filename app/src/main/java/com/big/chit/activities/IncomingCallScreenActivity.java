@@ -1,19 +1,13 @@
 package com.big.chit.activities;
 
 import android.Manifest;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -22,6 +16,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.big.chit.BaseApplication;
 import com.big.chit.R;
 import com.big.chit.models.Contact;
 import com.big.chit.models.Group;
@@ -165,7 +160,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
                                 mAudioPlayer.stopRingtone();
                                 LogCall logCall = null;
                                 if (user != null) {
-                                         //user = new User(mCallerId, mCallerId, getString(R.string.app_name), "");
+                                    //user = new User(mCallerId, mCallerId, getString(R.string.app_name), "");
                                     rChatDb.beginTransaction();
                                     logCall = new LogCall(user, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), user.getId());
                                     rChatDb.copyToRealm(logCall);
@@ -194,7 +189,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
     private void answerClicked() {
         mAudioPlayer.stopRingtone();
         try {
-            startActivity(CallScreenActivity.newIntent(this, user, "IN", isVideo, mRoomId, roomToken, key));
+            startActivity(CallScreenActivity.newIntent(this, user, "IN", isVideo, mRoomId, roomToken, key, "", true));
             finish();
         } catch (Exception e) {
             Log.e("CHECK", e.getMessage());
@@ -214,8 +209,9 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
     private void declineClicked() {
         mAudioPlayer.stopRingtone();
-        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
-        reference.child(key).child("call_status").setValue(3);
+   //     DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
+ //       reference.child(key).child("call_status").setValue(3);
+        NotificationManagerCompat.from(IncomingCallScreenActivity.this).cancel(89);
         LogCall logCall = null;
         if (user != null) {
             //    user = new User(mCallerId, mCallerId, getString(R.string.app_name), "");
@@ -244,7 +240,6 @@ public class IncomingCallScreenActivity extends BaseActivity {
         }
         return available;
     }
-
 
 
     @Override

@@ -1,9 +1,9 @@
 <component name="libraryTable">
   <library name="Gradle: io.agora.rtc:full-sdk:3.3.2@aar">
     <CLASSES>
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/full-sdk-3.3.2.aar/ab9fa1ac666ba8dfa57bf02a153e65cc/AndroidManifest.xml" />
       <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/full-sdk-3.3.2.aar/ab9fa1ac666ba8dfa57bf02a153e65cc/jars/classes.jar!/" />
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/full-sdk-3.3.2.aar/ab9fa1ac666ba8dfa57bf02a153e65cc/res" />
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/full-sdk-3.3.2.aar/ab9fa1ac666ba8dfa57bf02a153e65cc/AndroidManifest.xml" />
       <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/full-sdk-3.3.2.aar/ab9fa1ac666ba8dfa57bf02a153e65cc/jars/libs/agora-rtc-sdk.jar!/" />
     </CLASSES>
     <JAVADOC />

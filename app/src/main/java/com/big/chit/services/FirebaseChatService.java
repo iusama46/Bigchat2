@@ -300,21 +300,21 @@ public class FirebaseChatService extends Service {
 
                 Log.d("clima", dataSnapshot.getKey());
 
-                if (dataSnapshot.getChildrenCount() == 8) {
-                    if (dataSnapshot.child("call_status").getValue() != null) {
-                        int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
-
-                        if (callStatus == 0) {
-                            handleCallNotifications(dataSnapshot, false);
-                        } else if (callStatus == 1) {
-                            Log.d("clima", "missed call");
-                            handleCallNotifications(dataSnapshot, true);
-                            dataSnapshot.getRef().child("call_status").setValue(5);
-                        }
-                    }
-                } else {
-                    dataSnapshot.getRef().removeValue();
-                }
+//                if (dataSnapshot.getChildrenCount() == 8) {
+//                    if (dataSnapshot.child("call_status").getValue() != null) {
+//                        int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
+//
+//                        if (callStatus == 0) {
+//                            handleCallNotifications(dataSnapshot, false);
+//                        } else if (callStatus == 1) {
+//                            Log.d("clima", "missed call");
+//                            handleCallNotifications(dataSnapshot, true);
+//                            dataSnapshot.getRef().child("call_status").setValue(5);
+//                        }
+//                    }
+//                } else {
+//                    dataSnapshot.getRef().removeValue();
+//                }
             }
 
             @Override
@@ -322,7 +322,7 @@ public class FirebaseChatService extends Service {
                 Log.d("clima", "changed");
                 Log.d("clima", dataSnapshot.getKey());
 
-                if (dataSnapshot.getChildrenCount() == 8) {
+                /*if (dataSnapshot.getChildrenCount() == 8) {
                     if (dataSnapshot.child("call_status").getValue() != null) {
                         int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
 
@@ -337,7 +337,7 @@ public class FirebaseChatService extends Service {
                     }
                 } else {
                     dataSnapshot.getRef().removeValue();
-                }
+                }*/
             }
 
             @Override
@@ -358,6 +358,7 @@ public class FirebaseChatService extends Service {
     }
 
     private void handleCallNotifications(DataSnapshot dataSnapshot, boolean isMissedCall) {
+
 
         boolean isGroup = (boolean) dataSnapshot.child("is_group").getValue();
         String callerId = (String) dataSnapshot.child("caller_id").getValue();

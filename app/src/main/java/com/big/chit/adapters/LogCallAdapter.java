@@ -145,14 +145,24 @@ public class LogCallAdapter extends RecyclerView.Adapter<LogCallAdapter.MyViewHo
                         user = myUsers.get(i);
                 }
 //            Glide.with(context).load(logCall.getUser().getImage()).apply(new RequestOptions().placeholder(R.drawable.ic_placeholder)).into(userImage);
-                if (user.getImage() != null && !user.getImage().isEmpty())
-                    if (user.getBlockedUsersIds() != null && !user.getBlockedUsersIds().contains(MainActivity.userId))
-                        Picasso.get()
-                                .load(user.getImage())
-                                .tag(this)
-                                .error(R.drawable.ic_avatar)
-                                .placeholder(R.drawable.ic_avatar)
-                                .into(userImage);
+                try {
+
+
+                    if (user.getImage() != null && !user.getImage().isEmpty())
+                        if (user.getBlockedUsersIds() != null && !user.getBlockedUsersIds().contains(MainActivity.userId))
+                            Picasso.get()
+                                    .load(user.getImage())
+                                    .tag(this)
+                                    .error(R.drawable.ic_avatar)
+                                    .placeholder(R.drawable.ic_avatar)
+                                    .into(userImage);
+                        else
+                            Picasso.get()
+                                    .load(R.drawable.ic_avatar)
+                                    .tag(this)
+                                    .error(R.drawable.ic_avatar)
+                                    .placeholder(R.drawable.ic_avatar)
+                                    .into(userImage);
                     else
                         Picasso.get()
                                 .load(R.drawable.ic_avatar)
@@ -160,13 +170,9 @@ public class LogCallAdapter extends RecyclerView.Adapter<LogCallAdapter.MyViewHo
                                 .error(R.drawable.ic_avatar)
                                 .placeholder(R.drawable.ic_avatar)
                                 .into(userImage);
-                else
-                    Picasso.get()
-                            .load(R.drawable.ic_avatar)
-                            .tag(this)
-                            .error(R.drawable.ic_avatar)
-                            .placeholder(R.drawable.ic_avatar)
-                            .into(userImage);
+                } catch (Exception e){
+
+                }
             }
 
             userName.setText(logCall.getUser().getNameToDisplay());

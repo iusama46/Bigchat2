@@ -2,8 +2,8 @@
   <library name="Gradle: com.eyalbira.loadingdots:loading-dots:1.0.2@aar">
     <CLASSES>
       <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/loading-dots-1.0.2.aar/954c0b5df4404f5adb0c2d8c736ecbd7/jars/classes.jar!/" />
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/loading-dots-1.0.2.aar/954c0b5df4404f5adb0c2d8c736ecbd7/res" />
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/loading-dots-1.0.2.aar/954c0b5df4404f5adb0c2d8c736ecbd7/AndroidManifest.xml" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/loading-dots-1.0.2.aar/954c0b5df4404f5adb0c2d8c736ecbd7/res" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

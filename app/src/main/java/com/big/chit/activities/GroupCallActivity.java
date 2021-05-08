@@ -57,7 +57,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 
@@ -117,7 +116,13 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     private RelativeLayout myCallScreenRootRLY;
     private TextView mCallState, mCallerName, myTxtCalling;
     private Chronometer mCallDuration;
-
+    private ImageView userImage1, userImage2, switchVideo, switchMic, switchVolume;
+    private View tintBlue, bottomButtons;
+    private RelativeLayout localVideo;
+    private LinearLayout mySwitchCameraLLY;
+    private SensorManager mSensorManager;
+    private Sensor mProximity;
+    private String roomToken;
     private final IRtcEngineEventHandler mRtcEventHandler = new IRtcEngineEventHandler() {
         @Override
         public void onRtcStats(RtcStats stats) {
@@ -227,13 +232,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                 doRenderRemoteUi(uid);
         }
     };
-    private ImageView userImage1, userImage2, switchVideo, switchMic, switchVolume;
-    private View tintBlue, bottomButtons;
-    private RelativeLayout localVideo;
-    private LinearLayout mySwitchCameraLLY;
-    private SensorManager mSensorManager;
-    private Sensor mProximity;
-    private String  roomToken;
     private Handler myHandler;
     private Runnable myRunnable = new Runnable() {
         @Override
@@ -241,8 +239,9 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             sendMissedCallUpdate();
         }
     };
+    private boolean isAndroid = true;
 
-    public static Intent newIntent(Context context, Group user, String callId, String inOrOut, boolean callIsVideo, String token, String roomToken, String key) {
+    public static Intent newIntent(Context context, Group user, String callId, String inOrOut, boolean callIsVideo, String token, String roomToken, String key, boolean isAndroid) {
         Intent intent = new Intent(context, GroupCallActivity.class);
         intent.putExtra(EXTRA_DATA_USER, user);
         intent.putExtra(EXTRA_DATA_IN_OR_OUT, inOrOut);
@@ -251,6 +250,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         intent.putExtra("token", token);
         intent.putExtra("room_token", roomToken);
         intent.putExtra("key", key);
+        intent.putExtra("isAndroid", isAndroid);
 
         return intent;
     }

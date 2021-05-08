@@ -152,7 +152,7 @@ public class GroupIncomingActivity extends BaseActivity {
     private void answerClicked() {
         mAudioPlayer.stopRingtone();
         try {
-            startActivity(GroupCallActivity.newIntent(this, group, mCallerId, "IN", isVideo, mRoomId, roomToken, key));
+            //startActivity(GroupCallActivity.newIntent(this, group, mCallerId, "IN", isVideo, mRoomId, roomToken, key));
             finish();
         } catch (Exception e) {
             Log.e("CHECK", e.getMessage());

@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.ActivityOptions;
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -23,12 +24,18 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.big.chit.R;
 import com.big.chit.adapters.MenuUsersRecyclerAdapter;
 import com.big.chit.adapters.ViewPagerAdapter;
@@ -61,9 +68,13 @@ import com.mxn.soul.flowingdrawer_core.ElasticDrawer;
 import com.mxn.soul.flowingdrawer_core.FlowingDrawer;
 import com.squareup.picasso.Picasso;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Random;
 
 import io.realm.Realm;
 
@@ -136,18 +147,78 @@ public class MainActivity extends BaseActivity implements HomeIneractor, OnUserG
         floatingActionButton.setVisibility(View.VISIBLE);
 
 
-//        if (getIntent().getExtras() != null) {
-//            for (String key : getIntent().getExtras().keySet()) {
-//                String value = getIntent().getExtras().getString(key);
-//                Log.d("clima 2 ", "Key: " + key + " Value: " + value);
-//            }
-//        }
-
         setupViewPager();
         fetchContacts();
         markOnline(true);
 
 //          loadAdd();
+        pushNotification();
+    }
+
+
+    private void pushNotification() {
+        try {
+
+            RequestQueue queue = Volley.newRequestQueue(this);
+            String roomUid = getRoomId();
+            String url = "https://agoratokenbig.herokuapp.com/access_token?channel=" + roomUid;
+            StringRequest request = new StringRequest(url, new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+
+                    if (response != null) {
+                        try {
+                            JSONObject jsonObject = new JSONObject(response);
+                            String token = jsonObject.getString("token");
+                            Log.d("clima token", token);
+                            Log.d("clima uid", roomUid);
+
+                            SharedPreferences sharedPreferences = getSharedPreferences("roomData", MODE_PRIVATE);
+
+                            SharedPreferences.Editor myEdit = sharedPreferences.edit();
+
+                            myEdit.putString("roomId", roomUid);
+                            myEdit.putString("roomToken", token);
+                            myEdit.apply();
+
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+
+                }
+
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+
+                }
+            });
+
+            queue.add(request);
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    String getRoomId() {
+        String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        StringBuilder sb = new StringBuilder();
+        Random random = new Random();
+        int length = 7;
+
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(alphabet.length());
+            char randomChar = alphabet.charAt(index);
+            sb.append(randomChar);
+        }
+
+        return sb.toString().toLowerCase();
     }
 
 

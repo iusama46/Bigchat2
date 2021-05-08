@@ -9,6 +9,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
 import android.database.Cursor;
@@ -57,11 +58,6 @@ import android.widget.TableLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.big.chit.BaseApplication;
 import com.big.chit.R;
 import com.big.chit.adapters.MessageAdapter;
@@ -96,6 +92,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseException;
 import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -137,7 +134,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
+import java.util.Objects;
 
 import io.realm.Realm;
 import io.realm.RealmChangeListener;
@@ -185,6 +182,8 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     long dateDelete;
     boolean isGroup = false;
     String roomUid = "test";
+    String receiverToken = "";
+    private boolean isAndroid = true;
     private MessageAdapter messageAdapter;
     //Download complete listener
     private final BroadcastReceiver downloadCompleteReceiver = new BroadcastReceiver() {
@@ -499,8 +498,15 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         }
 
         initUi();
-        roomUid = getRoomId();
-        pushNotification(roomUid);
+
+        SharedPreferences sh = getSharedPreferences("roomData", MODE_APPEND);
+        token = sh.getString("roomToken", "");
+        roomUid = sh.getString("roomId", "");
+
+        if (user != null) {
+            getUserToken();
+        }
+
 
         //set basic user info
         String nameText = null, statusText = null, imageUrl = null;
@@ -553,6 +559,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         animateToolbarViews();
 
         userOrGroupId = user != null ? user.getId() : group.getId();
+
 
         //setup recycler view
         messageAdapter = new MessageAdapter(this, dataList, userMe.getId(), newMessage);
@@ -635,21 +642,6 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
 
     }
 
-    String getRoomId() {
-        String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-        StringBuilder sb = new StringBuilder();
-        Random random = new Random();
-        int length = 7;
-
-        for (int i = 0; i < length; i++) {
-            int index = random.nextInt(alphabet.length());
-            char randomChar = alphabet.charAt(index);
-            sb.append(randomChar);
-        }
-
-        return sb.toString().toLowerCase();
-    }
 
     @SuppressLint("ClickableViewAccessibility")
     private void initUi() {
@@ -751,6 +743,41 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
             newFileUploadTask(recordFilePath, AttachmentTypes.RECORDING, null);
         } else {
             new File(recordFilePath).delete();
+        }
+    }
+
+    void getUserToken() {
+        DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
+        try {
+
+            reference.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    try {
+                        if (dataSnapshot.exists()) {
+                            receiverToken = Objects.requireNonNull(dataSnapshot.child("deviceToken").getValue()).toString();
+                            Log.d("clima token", receiverToken);
+
+                            String deviceText = Objects.requireNonNull(dataSnapshot.child("osType").getValue()).toString();
+                            isAndroid = deviceText.equals("android");
+                            isTokenReceived=true;
+                        }
+                    } catch (Exception e) {
+                        Toast.makeText(ChatActivity.this, user.getId()+" needs to login again", Toast.LENGTH_SHORT).show();
+                        Log.d("clima", "Failed to get token");
+                        isTokenReceived = false;
+                    }
+
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            });
+        } catch (Exception e) {
+            Log.d("clima", e.getMessage());
+
         }
     }
 
@@ -877,34 +904,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
                 }
             });
 
-            if (!isGroup) {
-                isTokenReceived = true;
-                //token = "test";
-            }
-//                DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(user.getId());
-//                try {
-//
-//                    reference.child("token").addListenerForSingleValueEvent(new ValueEventListener() {
-//                        @Override
-//                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-//                            if (dataSnapshot.getValue().toString() != null) {
-//                                token = dataSnapshot.getValue().toString();
-//                                Log.d("clima token", token);
-//                                isTokenReceived = true;
-//                            }
-//
-//                        }
-//
-//                        @Override
-//                        public void onCancelled(@NonNull DatabaseError databaseError) {
-//
-//                        }
-//                    });
-//                }catch (Exception e){
-//                    Log.d("clima", e.getMessage());
-//
-//                }
-//            }
+
         } else {
             userStatus.setText("tap here for group info");
             isGroup = true;
@@ -915,47 +915,6 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         }
 
 
-    }
-
-    private void pushNotification(String uId) {
-        try {
-
-            RequestQueue queue = Volley.newRequestQueue(this);
-
-            String url = "https://agoratokenbig.herokuapp.com/access_token?channel=" + uId;
-
-            StringRequest request = new StringRequest(url, new Response.Listener<String>() {
-                @Override
-                public void onResponse(String response) {
-
-                    if (response != null) {
-                        try {
-                            JSONObject jsonObject = new JSONObject(response);
-                            token = jsonObject.getString("token");
-                            Log.d("clima token", token);
-                            Log.d("clima uid", roomUid);
-                            isTokenReceived = true;
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-
-                }
-
-            }, new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    isTokenReceived = false;
-                }
-            });
-
-            queue.add(request);
-
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
 
@@ -1460,7 +1419,9 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     }
 
     private void makeCall() {
-        if (!isTokenReceived) {
+        Log.d("clima user device token", receiverToken);
+        Log.d("clima romm token", token);
+        if (!isTokenReceived || token.equals("") || token.isEmpty()) {
             Toast.makeText(this, "Unable to make call", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -1468,7 +1429,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
         if (isGroup) {
             Log.d("clima", group.getId());
             Log.d("clima", group.getUserIds().toString());
-            startActivity(GroupCallActivity.newIntent(this, group, "callId", "OUT", callIsVideo, roomUid, token, "key"));
+            startActivity(GroupCallActivity.newIntent(this, group, "callId", "OUT", callIsVideo, roomUid, token, "key",isAndroid));
             return;
         }
 
@@ -1496,7 +1457,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
                     Toast.makeText(this, "Service is not started. Try stopping the service and starting it again before placing a call.", Toast.LENGTH_LONG).show();
                     return;
                 }
-                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, roomUid, token, "key"));
+                startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, roomUid, token, "key", receiverToken, isAndroid));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());
             }
