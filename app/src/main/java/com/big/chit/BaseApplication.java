@@ -102,6 +102,7 @@ public class BaseApplication extends Application implements LifecycleObserver {
         //  MobileAds.initialize(this, "Statusr-app-id");
         init();
         createChannel();
+
     }
 
     public void createChannel() {
@@ -112,6 +113,7 @@ public class BaseApplication extends Application implements LifecycleObserver {
                 channel.setDescription("Incoming Call Notification");
                 channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
                 channel.setImportance(NotificationManager.IMPORTANCE_HIGH);
+                //channel.enableLights(true);
 
                 NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                 manager.createNotificationChannel(channel);

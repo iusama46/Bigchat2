@@ -1,6 +1,5 @@
 package com.big.chit.services;
 
-import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -23,6 +22,7 @@ import com.big.chit.utils.Helper;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import java.util.Date;
 import java.util.HashMap;
 
 
@@ -38,7 +38,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     @Override
     public void onNewToken(String s) {
         super.onNewToken(s);
-        Log.e("clima", s);
     }
 
     @Override
@@ -78,18 +77,18 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     private void handleCallNotifications(RemoteMessage remoteMessage, boolean isMissedCall) {
 
         boolean isGroup = remoteMessage.getData().get("isGroupCall").equals("1");
-        String callerId = remoteMessage.getData().get("callerId").toString();
+        String callerId = remoteMessage.getData().get("callerId");
         String contactName = "PakOne";
 
-        boolean isVideo = remoteMessage.getData().get("isVideoCall").toString().equals("1");
+        boolean isVideo = remoteMessage.getData().get("isVideoCall").equals("1");
         String callType = isVideo ? "Video" : "Voice";
 
-        String roomId = remoteMessage.getData().get("channelName").toString();
-        String roomToken = remoteMessage.getData().get("token").toString();
+        String roomId = remoteMessage.getData().get("channelName");
+        String roomToken = remoteMessage.getData().get("token");
 
         String callerName = "PakOne";
         if (remoteMessage.getData().get("callerId") != null)
-            callerName = remoteMessage.getData().get("callerId").toString();
+            callerName = remoteMessage.getData().get("callerId");
 
         User userCaller = null;
         HashMap<String, User> myUsers = new Helper(MyFirebaseMessagingService.this).getCacheMyUsers();
@@ -99,13 +98,14 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         } else {
             contactName = callerId;
-            userCaller = new User(callerId, callerId, "", "");
+            userCaller = new User(callerId, callerId, "", "non");
             Log.d("clima user ", userCaller.getId());
         }
 
         if (isGroup && !isMissedCall) {
             Intent intent = new Intent(MyFirebaseMessagingService.this, GroupIncomingActivity.class);
             Log.d("clima id", callerId);
+            callerName = remoteMessage.getData().get("callerName");
             intent.putExtra("is_video", isVideo);
             intent.putExtra("room_token", roomToken);
             intent.putExtra("room_id", roomId);
@@ -113,12 +113,25 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             intent.putExtra("caller_name", callerName);
             //todo
             intent.putExtra("key", "dataSnapshot.getKey()");
+            if (remoteMessage.getData().get("timeStamp") != null) {
+                long date = Long.parseLong(remoteMessage.getData().get("timeStamp")) + 12 * 1000L;
+                String text = remoteMessage.getData().get("timeStamp");
+                Log.d("clima date", text);
+                long currentDate = new Date().getTime();
+                Log.d("clima current date", String.valueOf(currentDate));
+                Log.d("clima current date 22", String.valueOf(date));
+                if (currentDate > date) {
+                    Log.d("clima", "return");
+                    createMissedCallNotification(callerName, "Gave You " + callType + " Group  Missed Call");
+                    return;
+                }
+            }
+
             createNotificationForCall(intent, callerName, "Incoming Group " + callType + " Call");
         } else if (!isGroup && !isMissedCall) {
             Intent intent = new Intent(MyFirebaseMessagingService.this, IncomingCallScreenActivity.class);
 
             Log.d("clima id", callerId);
-
             intent.putExtra("is_video", isVideo);
             intent.putExtra("room_token", roomToken);
             intent.putExtra("room_id", roomId);
@@ -127,44 +140,75 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             intent.putExtra("key", "dataSnapshot.getKey()");
             intent.putExtra("user", userCaller);
 
-            createNotificationForCall(intent, contactName, "Incoming " + callType + " Call");
+            boolean isAddedInCall = false;
+            if (remoteMessage.getData().get("isAddedInCall") != null) {
+                String text = remoteMessage.getData().get("isAddedInCall");
+                isAddedInCall = text.equals("1");
+            }
+
+            if (remoteMessage.getData().get("timeStamp") != null) {
+                long date = Long.parseLong(remoteMessage.getData().get("timeStamp")) + 12 * 1000L;
+                String text = remoteMessage.getData().get("timeStamp");
+                Log.d("clima date", text);
+                long currentDate = new Date().getTime();
+                Log.d("clima current date", String.valueOf(currentDate));
+                Log.d("clima current date 22", String.valueOf(date));
+                if (currentDate > date) {
+                    Log.d("clima", "return");
+                    if (isAddedInCall) {
+                        createMissedCallNotification(contactName, "Was added you in a " + callType + " Call");
+                    }
+                    return;
+                }
+            }
+
+
+            if (!isAddedInCall)
+                createNotificationForCall(intent, contactName, "Incoming " + callType + " Call");
+            else
+                createNotificationForCall(intent, contactName, "Added  you in a " + callType + " Call");
         }
 
 
-        if (isMissedCall) {
+        if (isMissedCall && !isGroup)
+            createMissedCallNotification(contactName, "Gave You " + callType + "  Missed Call");
+//        else if(isMissedCall && isGroup)
+//        createMissedCallNotification(callerName, "Gave You " + callType + " Group  Missed Call");
+    }
 
-            Intent intent = new Intent(this, MainActivity.class);
-            PendingIntent pendingIntent = PendingIntent.getActivity(this, 56, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-            NotificationManagerCompat.from(MyFirebaseMessagingService.this).cancel(89);
-            //NotificationManagerCompat.from(MyFirebaseMessagingService.this).;
-            Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
+    public void createMissedCallNotification(String contactName, String text) {
+        Intent intent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 56, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        NotificationManagerCompat.from(MyFirebaseMessagingService.this).cancel(89);
+        //NotificationManagerCompat.from(MyFirebaseMessagingService.this).;
+        Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
 
-            String missedCallName = isGroup ? callerName : contactName;
-            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(MyFirebaseMessagingService.this, BaseApplication.CALL)
-                    .setContentTitle(missedCallName)
-                    .setContentText("Gave You " + callType + "  Missed Call")
-                    .setSmallIcon(R.mipmap.ic_launcher_round)
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                    .setCategory(NotificationCompat.CATEGORY_CALL)
-                    .setDefaults(Notification.DEFAULT_SOUND)
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(MyFirebaseMessagingService.this, BaseApplication.CALL)
+                .setContentTitle(contactName)
+                .setContentText(text)
+                .setSmallIcon(R.drawable.ic_baseline_phone_missed_24)
+                //.setSmallIcon(R.mipmap.ic_launcher_round)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setDefaults(Notification.DEFAULT_SOUND)
 
-                    .setAutoCancel(true)
-                    .setSound(ringUri)
-                    .setContentIntent(pendingIntent);
-                    //.setFullScreenIntent(pendingIntent, true);
-            Notification incomingCallNotification = notificationBuilder.build();
-            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            manager.notify(29, incomingCallNotification);
+                .setAutoCancel(true)
+                //.setSound(ringUri)
+                .setContentIntent(pendingIntent);
+        //.setFullScreenIntent(pendingIntent, true);
+        Notification incomingCallNotification = notificationBuilder.build();
+        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        manager.notify(29, incomingCallNotification);
 
-            LogCall logCall = null;
-            if (userCaller != null && !isGroup) {
+        LogCall logCall = null;
+        //  if (userCaller != null && !isGroup) {
 //                rChatDb.beginTransaction();
 //                logCall = new LogCall(userCaller, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), userCaller.getId());
 //                rChatDb.copyToRealm(logCall);
 //                rChatDb.commitTransaction();
-            }
+        //    }
 
-        }
+
     }
 
     private void createNotificationForCall(Intent intent, String callerName, String message) {
@@ -178,17 +222,19 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(MyFirebaseMessagingService.this, BaseApplication.CALL)
                 .setContentTitle(callerName)
                 .setContentText(message)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_logo_)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setBadgeIconType(R.drawable.ic_logo_)
                 .setAutoCancel(true)
-                .setContentIntent(pendingIntent)
+                .setTimeoutAfter(12000)
+                .setFullScreenIntent(pendingIntent, false)
                 //.setSound(ringUri)
-                .addAction(R.drawable.camera_icon,"Decline", pendingIntent)
-                .addAction(R.drawable.camera_icon,"Answer", pendingIntent)
-                .setFullScreenIntent(pendingIntent, true);
+                .setContentIntent(pendingIntent);
+        //           .addAction(R.drawable.camera_icon,"Decline", pendingIntent)
+        //         .addAction(R.drawable.camera_icon,"Answer", pendingIntent)
+        //.setFullScreenIntent(pendingIntent, true);
         Notification incomingCallNotification = notificationBuilder.build();
-        //incomingCallNotification.notify();
         NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         manager.notify(89, incomingCallNotification);
     }

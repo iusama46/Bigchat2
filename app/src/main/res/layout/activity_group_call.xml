@@ -6,52 +6,32 @@
     android:background="@android:color/white"
     android:keepScreenOn="true">
 
+    <FrameLayout
+        android:id="@+id/remoteVideo"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/remoteUser"
+        android:visibility="gone">
 
-<!--    <ScrollView-->
-<!--        android:id="@+id/scroll"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="match_parent"-->
-<!--        -->
-<!--        android:visibility="visible">-->
+        <com.big.chit.openvcall.ui.layout.GridVideoViewContainer
+            android:id="@+id/grid_video_view_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
-
-<!--        <RelativeLayout-->
-<!--            android:id="@+id/remoteVideo"-->
-<!--            android:layout_width="match_parent"-->
-
-<!--            android:layout_height="wrap_content"-->
-<!--            android:background="@drawable/vertical_gradient"-->
-<!--            android:visibility="visible">-->
-
-            <FrameLayout
-                android:visibility="gone"
-                android:id="@+id/remoteVideo"
-                android:layout_above="@+id/remoteUser"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent">
-
-                <com.big.chit.openvcall.ui.layout.GridVideoViewContainer
-                    android:id="@+id/grid_video_view_container"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-
-                <ViewStub
-                    android:id="@id/small_video_view_dock"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="60dp"
-                    android:inflatedId="@id/small_video_view_dock"
-                    android:layout="@layout/small_video_view_dock" />
-            </FrameLayout>
-<!--        </RelativeLayout>-->
-<!--    </ScrollView>-->
+        <ViewStub
+            android:id="@id/small_video_view_dock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="60dp"
+            android:inflatedId="@id/small_video_view_dock"
+            android:layout="@layout/small_video_view_dock" />
+    </FrameLayout>
 
     <RelativeLayout
         android:id="@+id/remoteVideo2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_above="@+id/remoteUser"
-
         android:background="@drawable/vertical_gradient" />
 
 
@@ -117,7 +97,10 @@
         android:ellipsize="marquee"
         android:fontFamily="@font/roboto_medium"
         android:gravity="center"
-        android:singleLine="true"
+        android:layout_marginTop="2dp"
+        android:layout_marginHorizontal="12dp"
+
+
         android:textColor="@android:color/black"
         android:textSize="22sp" />
 
@@ -149,15 +132,15 @@
     <ImageView
         android:id="@+id/add_person"
 
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+        android:layout_width="34dp"
+        android:layout_height="35dp"
         android:layout_below="@+id/callState"
         android:layout_alignParentEnd="true"
         android:layout_marginHorizontal="20dp"
         android:layout_marginTop="20dp"
         android:src="@drawable/ic_action_name"
 
-        android:visibility="gone" />
+        android:visibility="visible" />
 
     <ImageView
         android:id="@+id/hangupButton"

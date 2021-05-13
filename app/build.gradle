@@ -68,7 +68,7 @@ dependencies {
     //implementation 'io.agora.rtc:voice-sdk:3.3.2'
     implementation 'io.agora.rtc:full-sdk:3.3.2'
     //implementation 'com.twilio:voice-android:5.7.2'
-
+    //implementation 'com.instabug.library:instabug:10.5.0'
     //noinspection GradleCompatible
     implementation 'com.android.support:appcompat-v7:28.0.0'
     implementation 'com.android.support:design:28.0.0'

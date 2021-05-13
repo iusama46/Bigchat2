@@ -357,117 +357,7 @@ public class FirebaseChatService extends Service {
         });
     }
 
-    private void handleCallNotifications(DataSnapshot dataSnapshot, boolean isMissedCall) {
 
-
-        boolean isGroup = (boolean) dataSnapshot.child("is_group").getValue();
-        String callerId = (String) dataSnapshot.child("caller_id").getValue();
-        String contactName = "PakOne";
-
-        boolean isVideo = (boolean) dataSnapshot.child("is_video").getValue();
-        String callType = isVideo ? "Video" : "Voice";
-
-        String roomId = (String) dataSnapshot.child("channel_id").getValue();
-        String roomToken = (String) dataSnapshot.child("channel_token").getValue();
-        String callerName = (String) dataSnapshot.child("caller_name").getValue();
-
-        User userCaller = null;
-        HashMap<String, User> myUsers = helper.getCacheMyUsers();
-        if (myUsers != null && myUsers.containsKey(callerId)) {
-            userCaller = myUsers.get(callerId);
-            contactName = userCaller.getNameToDisplay();
-
-        } else {
-            contactName = callerId;
-            userCaller= new User(callerId,callerId,"","");
-            Log.d("clima user ",userCaller.getId());
-        }
-
-        if (isGroup && !isMissedCall) {
-            Intent intent = new Intent(FirebaseChatService.this, GroupIncomingActivity.class);
-            Log.d("clima id", callerId);
-            intent.putExtra("is_video", isVideo);
-            intent.putExtra("room_token", roomToken);
-            intent.putExtra("room_id", roomId);
-            intent.putExtra("caller_id", callerId);
-            intent.putExtra("caller_name", callerName);
-            intent.putExtra("key", dataSnapshot.getKey());
-            createNotificationForCall(intent, callerName, "Incoming Group " + callType + " Call");
-        } else if (!isGroup && !isMissedCall) {
-            Intent intent = new Intent(FirebaseChatService.this, IncomingCallScreenActivity.class);
-
-            Log.d("clima id", callerId);
-
-            intent.putExtra("is_video", isVideo);
-            intent.putExtra("room_token", roomToken);
-            intent.putExtra("room_id", roomId);
-            intent.putExtra("caller_id", callerId);
-            intent.putExtra("key", dataSnapshot.getKey());
-            intent.putExtra("user",userCaller);
-
-            createNotificationForCall(intent, contactName, "Incoming " + callType + " Call");
-        }
-
-
-        if (isMissedCall) {
-
-            Intent intent = new Intent(this, MainActivity.class);
-            PendingIntent pendingIntent = PendingIntent.getActivity(this, 56, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-            Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
-
-            String missedCallName = isGroup ? callerName : contactName;
-            NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(FirebaseChatService.this, BaseApplication.CALL)
-                    .setContentTitle(missedCallName)
-                    .setContentText("Gave You " + callType + "  Missed Call")
-                    .setSmallIcon(R.mipmap.ic_launcher)
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setCategory(NotificationCompat.CATEGORY_CALL)
-                    .setDefaults(Notification.DEFAULT_ALL)
-                    //.addAction(R.drawable.camera_icon, getString(R.string.app_name), pendingIntent)
-//                            .addAction(R.drawable.ic_call_accept, getString(R.string.answer_call), receiveCallPendingIntent)
-                    .setAutoCancel(true)
-                    .setSound(ringUri)
-                    .setContentIntent(pendingIntent)
-                    .setFullScreenIntent(pendingIntent, true);
-            Notification incomingCallNotification = notificationBuilder.build();
-            NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            manager.notify(89, incomingCallNotification);
-
-            LogCall logCall = null;
-            if (userCaller != null && !isGroup) {
-                //    userCaller = new User(callerId, callerId, getString(R.string.app_name), "");
-                rChatDb.beginTransaction();
-                logCall = new LogCall(userCaller, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), userCaller.getId());
-                rChatDb.copyToRealm(logCall);
-                rChatDb.commitTransaction();
-            }
-
-        }
-    }
-
-    private void createNotificationForCall(Intent intent, String callerName, String message) {
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-
-        stackBuilder.addNextIntentWithParentStack(intent);
-        PendingIntent pendingIntent = stackBuilder.getPendingIntent(92, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(FirebaseChatService.this, BaseApplication.CALL)
-                .setContentTitle(callerName)
-                .setContentText(message)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setAutoCancel(true)
-                .setContentIntent(pendingIntent)
-                //.setSound(ringUri)
-                .setFullScreenIntent(pendingIntent, true);
-        Notification incomingCallNotification = notificationBuilder.build();
-        //incomingCallNotification.notify();
-        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        manager.notify(89, incomingCallNotification);
-    }
 
 
     @Override
@@ -481,7 +371,7 @@ public class FirebaseChatService extends Service {
                 registerUserUpdates();
                 registerGroupUpdates();
                 registerStatusUpdates();
-                registerCallUpdates();
+                //registerCallUpdates();
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
                         == PackageManager.PERMISSION_GRANTED) {
                     if (!FetchMyUsersService.STARTED) {

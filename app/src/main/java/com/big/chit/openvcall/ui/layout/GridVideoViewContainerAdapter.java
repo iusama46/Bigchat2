@@ -8,20 +8,21 @@ import android.view.SurfaceView;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 
-
 import com.big.chit.propeller.UserStatusData;
 
 import java.util.HashMap;
 
-
+/**
+ * Agora Calling SDK Added by Ussama Iftikhar on 12-April-2021.
+ * Email iusama46@gmail.com
+ * Email iusama466@gmail.com
+ * Github https://github.com/iusama46
+ */
 
 public class GridVideoViewContainerAdapter extends VideoViewAdapter {
 
-
-
     public GridVideoViewContainerAdapter(Activity activity, int localUid, HashMap<Integer, SurfaceView> uids) {
         super(activity, localUid, uids);
-    //    log.debug("GridVideoViewContainerAdapter " + (mLocalUid & 0xFFFFFFFFL));
     }
 
     @Override
@@ -69,7 +70,7 @@ public class GridVideoViewContainerAdapter extends VideoViewAdapter {
 
         notifyDataSetChanged();
         if (DEBUG) {
-      //      log.debug("notifyUiChanged " + (mLocalUid & 0xFFFFFFFFL) + " " + (localUid & 0xFFFFFFFFL) + " " + uids + " " + status + " " + volume);
+            //      log.debug("notifyUiChanged " + (mLocalUid & 0xFFFFFFFFL) + " " + (localUid & 0xFFFFFFFFL) + " " + uids + " " + status + " " + volume);
         }
     }
 

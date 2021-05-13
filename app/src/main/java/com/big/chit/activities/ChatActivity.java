@@ -760,10 +760,10 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
 
                             String deviceText = Objects.requireNonNull(dataSnapshot.child("osType").getValue()).toString();
                             isAndroid = deviceText.equals("android");
-                            isTokenReceived=true;
+                            isTokenReceived = true;
                         }
                     } catch (Exception e) {
-                        Toast.makeText(ChatActivity.this, user.getId()+" needs to login again", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ChatActivity.this, user.getId() + " needs to login again", Toast.LENGTH_SHORT).show();
                         Log.d("clima", "Failed to get token");
                         isTokenReceived = false;
                     }
@@ -1421,17 +1421,18 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
     private void makeCall() {
         Log.d("clima user device token", receiverToken);
         Log.d("clima romm token", token);
+        if (isGroup) {
+            Log.d("clima", group.getId());
+            Log.d("clima", group.getUserIds().toString());
+            startActivity(GroupCallActivity.newIntent(this, group, group.getId(), "OUT", callIsVideo, roomUid, token, "key", group.getName(), ""));
+            return;
+        }
+
         if (!isTokenReceived || token.equals("") || token.isEmpty()) {
             Toast.makeText(this, "Unable to make call", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (isGroup) {
-            Log.d("clima", group.getId());
-            Log.d("clima", group.getUserIds().toString());
-            startActivity(GroupCallActivity.newIntent(this, group, "callId", "OUT", callIsVideo, roomUid, token, "key",isAndroid));
-            return;
-        }
 
         userMe = helper.getLoggedInUser();
 
@@ -1457,6 +1458,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
                     Toast.makeText(this, "Service is not started. Try stopping the service and starting it again before placing a call.", Toast.LENGTH_LONG).show();
                     return;
                 }
+
                 startActivity(CallScreenActivity.newIntent(this, user, "OUT", callIsVideo, roomUid, token, "key", receiverToken, isAndroid));
             } catch (Exception e) {
                 Log.e("CHECK", e.getMessage());

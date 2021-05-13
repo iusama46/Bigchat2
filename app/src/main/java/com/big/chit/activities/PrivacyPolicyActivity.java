@@ -69,4 +69,18 @@ public class PrivacyPolicyActivity extends AppCompatActivity {
             progressBar.setVisibility(View.GONE);
         }
     }
+
+    @Override
+    protected void onDestroy() {
+        try {
+            String token = FirebaseInstanceId.getInstance().getToken();
+            String uId = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
+            DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(uId);
+            reference.child("deviceToken").setValue(token);
+            reference.child("osType").setValue("android");
+        } catch (Exception e) {
+            Log.d("clima e", e.getMessage());
+        }
+        super.onDestroy();
+    }
 }

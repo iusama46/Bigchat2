@@ -65,6 +65,7 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true"
         tools:replace="android:allowBackup,android:appComponentFactory">
+        <activity android:name=".activities.DelCallActivity"></activity>
         <activity android:name=".activities.GroupIncomingActivity" />
         <activity android:name=".activities.GroupCallActivity" />
         <activity
@@ -140,9 +141,7 @@
             android:screenOrientation="portrait" />
         <activity
             android:name=".activities.IncomingCallScreenActivity"
-
-            android:screenOrientation="sensorPortrait"
-             />
+            android:screenOrientation="sensorPortrait" />
         <activity
             android:name=".activities.SplashActivity"
             android:screenOrientation="portrait"

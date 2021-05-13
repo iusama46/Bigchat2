@@ -16,6 +16,13 @@ import java.util.HashMap;
 
 import io.agora.propeller.ui.RecyclerItemClickListener;
 
+/**
+ * Agora Calling SDK Added by Ussama Iftikhar on 12-April-2021.
+ * Email iusama46@gmail.com
+ * Email iusama466@gmail.com
+ * Github https://github.com/iusama46
+ */
+
 public class GridVideoViewContainer extends RecyclerView {
 
 

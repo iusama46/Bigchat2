@@ -4,9 +4,9 @@
       <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/customtabs-28.0.0.aar/2925a0f0ad748ef593e95ba33ef66aef/annotations.zip!/" />
     </ANNOTATIONS>
     <CLASSES>
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/customtabs-28.0.0.aar/2925a0f0ad748ef593e95ba33ef66aef/AndroidManifest.xml" />
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/customtabs-28.0.0.aar/2925a0f0ad748ef593e95ba33ef66aef/res" />
       <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/customtabs-28.0.0.aar/2925a0f0ad748ef593e95ba33ef66aef/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/customtabs-28.0.0.aar/2925a0f0ad748ef593e95ba33ef66aef/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/customtabs-28.0.0.aar/2925a0f0ad748ef593e95ba33ef66aef/AndroidManifest.xml" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

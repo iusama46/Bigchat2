@@ -1,12 +1,19 @@
 package com.big.chit.activities;
 
 import android.Manifest;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 import android.view.View;
@@ -48,11 +55,21 @@ public class IncomingCallScreenActivity extends BaseActivity {
     DatabaseReference reference;
     boolean isVideo = false;
     String key = "";
-    private String[] recordPermissions = {Manifest.permission.VIBRATE, Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+    private final String[] recordPermissions = {Manifest.permission.VIBRATE, Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
     private String mCallerId, mRoomId;
+    private final Runnable myRunnable = new Runnable() {
+        @Override
+        public void run() {
+            String callType = isVideo ? "Video" : "Voice";
+
+            createMissedCallNotification(user != null ? user.getNameToDisplay() : mCallerId, "Gave You " + callType + " Missed Call");
+            Log.d("clima", "finish");
+            finish();
+        }
+    };
     private AudioPlayer mAudioPlayer;
     private String roomToken;
-    private View.OnClickListener mClickListener = new View.OnClickListener() {
+    private final View.OnClickListener mClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
             switch (v.getId()) {
@@ -69,6 +86,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
             }
         }
     };
+    private Handler myHandler;
 
     @Override
     protected void onDestroy() {
@@ -76,6 +94,8 @@ public class IncomingCallScreenActivity extends BaseActivity {
         super.onDestroy();
         if (valueEventListener != null)
             reference.removeEventListener(valueEventListener);
+        if (myHandler != null && myRunnable != null)
+            myHandler.removeCallbacks(myRunnable);
     }
 
     //TODO
@@ -113,6 +133,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
         findViewById(R.id.answerButton).setOnClickListener(mClickListener);
         findViewById(R.id.declineButton).setOnClickListener(mClickListener);
         onZegoConnected();
+
     }
 
     void onZegoConnected() {
@@ -121,68 +142,102 @@ public class IncomingCallScreenActivity extends BaseActivity {
             user = myUsers.get(mCallerId);
         }
 
-        TextView remoteUser = (TextView) findViewById(R.id.remoteUser);
+        TextView remoteUser = findViewById(R.id.remoteUser);
         ImageView userImage1 = findViewById(R.id.userImage1);
         ImageView userImage2 = findViewById(R.id.userImage2);
         remoteUser.setText(user != null ? user.getNameToDisplay() : mCallerId);
 
-        if (user != null && !user.getImage().isEmpty()) {
-//                Glide.with(this).load(user.getImage()).apply(new RequestOptions().placeholder(R.drawable.ic_placeholder)).into(userImage1);
-//                Glide.with(this).load(user.getImage()).apply(RequestOptions.circleCropTransform().placeholder(R.drawable.ic_placeholder)).into(userImage2);
-            Picasso.get()
-                    .load(user.getImage())
-                    .tag(this)
-                    .placeholder(R.drawable.ic_avatar)
-                    .into(userImage2);
+        if (user.getImage().equals("non")) {
+            DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference().child("data").child("users");
+            databaseReference.child(user.getId()).child("image").addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    try {
+                        String imageUrl = dataSnapshot.getValue().toString();
+                        user.setImage(imageUrl);
+                        if (user != null && !user.getImage().isEmpty()) {
+
+                            Picasso.get()
+                                    .load(user.getImage())
+                                    .tag(this)
+                                    .placeholder(R.drawable.ic_avatar)
+                                    .into(userImage2);
+                        } else {
+                            userImage2.setBackgroundResource(R.drawable.ic_avatar);
+                        }
+                    } catch (Exception e) {
+                        userImage2.setBackgroundResource(R.drawable.ic_avatar);
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    userImage2.setBackgroundResource(R.drawable.ic_avatar);
+                }
+            });
         } else {
-            userImage2.setBackgroundResource(R.drawable.ic_avatar);
+            if (user != null && !user.getImage().isEmpty()) {
+                Picasso.get()
+                        .load(user.getImage())
+                        .tag(this)
+                        .placeholder(R.drawable.ic_avatar)
+                        .into(userImage2);
+            } else {
+                userImage2.setBackgroundResource(R.drawable.ic_avatar);
+            }
+
         }
+
+
         TextView callingType = findViewById(R.id.txt_calling);
         callingType.setText(getResources().getString(R.string.app_name) + (isVideo ? " Incoming Video Calling" : " Incoming Voice Calling"));
+
+        myHandler = new Handler();
+        myHandler.postDelayed(myRunnable, 12000);
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
-        try {
-            valueEventListener = reference.child(key).addValueEventListener(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-
-                    if (dataSnapshot.getChildrenCount() > 0) {
-
-                        if (dataSnapshot.child("call_status").getValue() != null) {
-
-                            int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
-
-                            if (callStatus != 0) {
-                                mAudioPlayer.stopRingtone();
-                                LogCall logCall = null;
-                                if (user != null) {
-                                    //user = new User(mCallerId, mCallerId, getString(R.string.app_name), "");
-                                    rChatDb.beginTransaction();
-                                    logCall = new LogCall(user, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), user.getId());
-                                    rChatDb.copyToRealm(logCall);
-                                    rChatDb.commitTransaction();
-                                }
-
-                                finish();
-                            }
-
-                        }
-                    }
-                }
-
-
-                @Override
-                public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                }
-            });
-        } catch (Exception e) {
-
-        }
+//        reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
+//        try {
+//            valueEventListener = reference.child(key).addValueEventListener(new ValueEventListener() {
+//                @Override
+//                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+//
+//                    if (dataSnapshot.getChildrenCount() > 0) {
+//
+//                        if (dataSnapshot.child("call_status").getValue() != null) {
+//
+//                            int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
+//
+//                            if (callStatus != 0) {
+//                                mAudioPlayer.stopRingtone();
+//                                LogCall logCall = null;
+//                                if (user != null) {
+//                                    //user = new User(mCallerId, mCallerId, getString(R.string.app_name), "");
+//                                    rChatDb.beginTransaction();
+//                                    logCall = new LogCall(user, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), user.getId());
+//                                    rChatDb.copyToRealm(logCall);
+//                                    rChatDb.commitTransaction();
+//                                }
+//
+//                                finish();
+//                            }
+//
+//                        }
+//                    }
+//                }
+//
+//
+//                @Override
+//                public void onCancelled(@NonNull DatabaseError databaseError) {
+//
+//                }
+//            });
+//        } catch (Exception e) {
+//
+//        }
 
     }
 
@@ -209,14 +264,14 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
     private void declineClicked() {
         mAudioPlayer.stopRingtone();
-   //     DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
- //       reference.child(key).child("call_status").setValue(3);
+        //     DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId());
+        //       reference.child(key).child("call_status").setValue(3);
         NotificationManagerCompat.from(IncomingCallScreenActivity.this).cancel(89);
         LogCall logCall = null;
         if (user != null) {
             //    user = new User(mCallerId, mCallerId, getString(R.string.app_name), "");
             rChatDb.beginTransaction();
-            logCall = new LogCall(user, System.currentTimeMillis(), 0, false, "cause.toString()", userMe.getId(), user.getId());
+            logCall = new LogCall(user, System.currentTimeMillis(), 0, isVideo, "cause.toString()", userMe.getId(), user.getId());
             rChatDb.copyToRealm(logCall);
             rChatDb.commitTransaction();
         }
@@ -280,6 +335,30 @@ public class IncomingCallScreenActivity extends BaseActivity {
 
     @Override
     void statusUpdated(Status status) {
+
+    }
+
+    public void createMissedCallNotification(String contactName, String text) {
+        Intent intent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 56, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        NotificationManagerCompat.from(IncomingCallScreenActivity.this).cancel(89);
+        Uri ringUri = Settings.System.DEFAULT_RINGTONE_URI;
+
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(IncomingCallScreenActivity.this, BaseApplication.CALL)
+                .setContentTitle(contactName)
+                .setContentText(text)
+                .setSmallIcon(R.drawable.ic_baseline_phone_missed_24)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setDefaults(Notification.DEFAULT_SOUND)
+                .setAutoCancel(true)
+                .setSound(ringUri)
+                .setContentIntent(pendingIntent);
+        //.setFullScreenIntent(pendingIntent, true);
+        Notification incomingCallNotification = notificationBuilder.build();
+        NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        manager.notify(29, incomingCallNotification);
+
 
     }
 }

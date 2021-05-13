@@ -1,6 +1,5 @@
 package com.big.chit.activities;
 
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -12,7 +11,6 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.media.AudioManager;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
@@ -33,10 +31,16 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.big.chit.R;
 import com.big.chit.Utils;
 import com.big.chit.models.Contact;
 import com.big.chit.models.Group;
+import com.big.chit.models.GroupUser;
 import com.big.chit.models.LogCall;
 import com.big.chit.models.Status;
 import com.big.chit.models.User;
@@ -47,6 +51,7 @@ import com.big.chit.openvcall.ui.layout.SmallVideoViewDecoration;
 import com.big.chit.propeller.UserStatusData;
 import com.big.chit.propeller.ui.RtlLinearLayoutManager;
 import com.big.chit.utils.AudioPlayer;
+import com.big.chit.utils.Helper;
 import com.big.chit.utils.OnDragTouchListener;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -54,11 +59,20 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
+import com.squareup.picasso.Picasso;
 
+import org.json.JSONObject;
+
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import io.agora.rtc.Constants;
 import io.agora.rtc.IRtcEngineEventHandler;
@@ -88,9 +102,13 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     private static final int PERMISSION_REQ_ID = 22;
     private final HashMap<Integer, SurfaceView> muIdsList = new HashMap<>();
     private final int mCallDurationSecond = 0;
-    private final int mAudioRouting = Constants.AUDIO_ROUTE_DEFAULT;
+
     private final boolean mIsLandscape = false;
+
     public int mLayoutType = LAYOUT_TYPE_DEFAULT;
+    List<GroupUser> userList = new ArrayList<>();
+    List<GroupUser> userInCallList = new ArrayList<>();
+    List<String> uIdsList = new ArrayList<>();
     int configUid = 0;
     String roomId = "group";
     PowerManager.WakeLock wlOff = null, wlOn = null;
@@ -103,9 +121,10 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     User tempUser;
     boolean isLoggedIn = false;
     RelativeLayout remoteVideo2;
-
     String key;
     FrameLayout remoteVideo;
+    String groupName;
+    String groupImage = "";
     private SmallVideoViewAdapter mSmallVideoViewAdapter;
     private GridVideoViewContainer mGridVideoViewContainer;
     private RelativeLayout mSmallVideoViewDock;
@@ -131,13 +150,13 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                 @Override
                 public void run() {
                     counter = stats.users;
+
                     if (isConnected) {
                         if (stats.users <= 1)
                             endCall();
                     }
                     if (stats.users > 1) {
                         mAudioPlayer.stopProgressTone();
-                        mCallerName.setText(stats.users + " People");
                         isConnected = true;
                     }
                 }
@@ -151,6 +170,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                 @Override
                 public void run() {
                     isLoggedIn = true;
+
                     if (!isVideoCall)
                         setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
                     else {
@@ -160,11 +180,15 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                     Log.d("clima", String.valueOf(uid));
                     if (!inOrOut.equals("IN")) {
                         mAudioPlayer.playProgressTone();
-                        //pushNotification(false);
-                        callUser();
-                    } else {
-                        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego").child(userMe.getId()).child(key);
-                        reference.child("call_status").setValue(4);
+
+                        for (int i = 0; i < group.getUserIds().size(); i++) {
+
+                            if (!userMe.getId().equals(group.getUserIds().get(i))) {
+                                Log.d("clima group sent", group.getUserIds().get(i));
+                                pushCallNotification(false, group.getUserIds().get(i));
+                            }
+                        }
+
                     }
                 }
             });
@@ -179,6 +203,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                 public void run() {
                     isLoggedIn = true;
                     Log.d("clima user ", String.valueOf(uid));
+
                     if (!isVideoCall)
                         setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
                     else
@@ -203,6 +228,21 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                     }
                     isConnected = true;
 
+                    if (userList.isEmpty()) {
+                        userList = getUsers();
+                    }
+
+                    if (!userList.isEmpty()) {
+                        for (GroupUser user : userList) {
+                            if (user.getId().contains(String.valueOf(uid))) {
+                                userInCallList.add(new GroupUser(user.getId(), user.getImage(), uid));
+                                uIdsList.add(String.valueOf(uid));
+                                updateUsers();
+                                break;
+                            }
+                        }
+                    }
+
                 }
             });
         }
@@ -218,6 +258,21 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                         if (temp <= 1)
                             endCall();
                     }
+
+                    try {
+                        uIdsList.remove(String.valueOf(uid));
+                        for (GroupUser groupUser : userInCallList) {
+                            if (groupUser.getShortID() == uid) {
+                                userInCallList.remove(groupUser);
+                                break;
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+
+                    }
+                    updateUsers();
+
                     if (isVideoCall) {
                         doRemoveRemoteUi(uid);
                     }
@@ -232,16 +287,10 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
                 doRenderRemoteUi(uid);
         }
     };
-    private Handler myHandler;
-    private Runnable myRunnable = new Runnable() {
-        @Override
-        public void run() {
-            sendMissedCallUpdate();
-        }
-    };
-    private boolean isAndroid = true;
 
-    public static Intent newIntent(Context context, Group user, String callId, String inOrOut, boolean callIsVideo, String token, String roomToken, String key, boolean isAndroid) {
+    public static Intent newIntent(Context context, Group user, String callId, String
+            inOrOut, boolean callIsVideo, String token, String roomToken, String key, String
+                                           callerName, String imageUrl) {
         Intent intent = new Intent(context, GroupCallActivity.class);
         intent.putExtra(EXTRA_DATA_USER, user);
         intent.putExtra(EXTRA_DATA_IN_OR_OUT, inOrOut);
@@ -249,10 +298,177 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         intent.putExtra("isVideoCall", callIsVideo);
         intent.putExtra("token", token);
         intent.putExtra("room_token", roomToken);
+        intent.putExtra("callerName", callerName);
+        intent.putExtra("imageUrl", imageUrl);
         intent.putExtra("key", key);
-        intent.putExtra("isAndroid", isAndroid);
-
         return intent;
+    }
+
+    void updateUsers() {
+
+        StringBuilder text = new StringBuilder();
+        Log.d("clima users in call ", String.valueOf(userInCallList.size()));
+
+        if (userInCallList.isEmpty()) {
+            return;
+        }
+        HashMap<String, User> myUsers = new Helper(GroupCallActivity.this).getCacheMyUsers();
+        if (userInCallList.size() == 1) {
+            if (myUsers != null && myUsers.containsKey(userInCallList.get(0).getId())) {
+                text.append(Objects.requireNonNull(myUsers.get(userInCallList.get(0).getId())).getNameToDisplay());
+            } else {
+                text.append(userInCallList.get(0).getId());
+            }
+        } else {
+            for (int i = 0; i < userInCallList.size(); i++) {
+                try {
+                    if (myUsers != null && myUsers.containsKey(userInCallList.get(i).getId())) {
+                        text.append(Objects.requireNonNull(myUsers.get(userInCallList.get(i).getId())).getNameToDisplay());
+                    } else {
+                        text.append(userInCallList.get(i).getId());
+                    }
+
+                    Log.d("clima index", String.valueOf(i));
+
+                    if (userInCallList.size() - 1 != i)
+                        text.append(", ");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        mCallerName.setText(text);
+    }
+
+    private List<GroupUser> getUsers() {
+        List<GroupUser> tempList = new ArrayList<>();
+        try {
+            Query reference = FirebaseDatabase.getInstance().getReference().child("data").child("users");//.orderByKey().startAt("72882").endAt("72882\uf8ff");
+            reference.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    for (DataSnapshot child : dataSnapshot.getChildren()) {
+                        try {
+                            if (child.child("image").getValue() != null) {
+                                tempList.add(new GroupUser(child.getKey(), Objects.requireNonNull(child.child("image").getValue()).toString()));
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            });
+        } catch (Exception e) {
+
+        }
+
+        return tempList;
+    }
+
+    private void pushCallNotification(boolean isMissedCall, String userUId) {
+        DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(userUId);
+        try {
+            reference.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    try {
+                        if (dataSnapshot.exists()) {
+                            String tempUserToken = Objects.requireNonNull(dataSnapshot.child("deviceToken").getValue()).toString();
+                            Log.d("clima token", tempUserToken);
+
+                            String deviceText = Objects.requireNonNull(dataSnapshot.child("osType").getValue()).toString();
+                            boolean tempIsAndroid = deviceText.equals("android");
+
+                            pushNotificationToDevice(isMissedCall, tempUserToken, tempIsAndroid, false);
+                        }
+                    } catch (Exception e) {
+                        Toast.makeText(GroupCallActivity.this, "Something went gone wrong", Toast.LENGTH_SHORT).show();
+                        endCall();
+                        Log.d("clima", "Failed to get token");
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void pushNotificationToDevice(boolean isMissedCall, String tempUserToken, Boolean tempIsAndroid, boolean isAddedInCall) {
+        try {
+            RequestQueue queue = Volley.newRequestQueue(this);
+
+            String url = "https://fcm.googleapis.com/fcm/send";
+
+            JSONObject dataObj = new JSONObject();
+
+            JSONObject notificationObject = new JSONObject();
+
+            if (!tempIsAndroid) {
+                //notificationObject.put("title", isVideoCall ? "Video Call" : "Voice Call");
+                notificationObject.put("title", isMissedCall ? mCallId + " gave you missed call" : mCallId + " is calling you");
+                notificationObject.put("body", isMissedCall ? "PakOne" : "PakOne Voice Calling...");
+                notificationObject.put("mutable_content", true);
+                notificationObject.put("sound", "incoming.wav");
+                notificationObject.put("content_available", true);
+            }
+
+            dataObj.put("isGroupCall", "1");
+            dataObj.put("isVideoCall", isVideoCall ? "1" : "0");
+            dataObj.put("isAddedInCall", isAddedInCall ? "1" : "0");
+            dataObj.put("channelName", roomId);
+            dataObj.put("token", roomToken);
+            dataObj.put("callStatus", isMissedCall ? "1" : "0");
+
+            dataObj.put("callerId", mCallId);
+            dataObj.put("callerName", groupName);
+            dataObj.put("timeStamp", System.currentTimeMillis());
+            dataObj.put("sound", "incoming.wav");
+            dataObj.put("alert", "SomeOne is Calling You!");
+            dataObj.put("osType", "1");
+
+            JSONObject jsonObject = new JSONObject();
+
+            if (!tempIsAndroid)
+                jsonObject.put("notification", notificationObject);
+            jsonObject.put("data", dataObj);
+            jsonObject.put("to", tempUserToken);
+
+            JsonObjectRequest request = new JsonObjectRequest(url, jsonObject, new Response.Listener<JSONObject>() {
+                @Override
+                public void onResponse(JSONObject response) {
+                    Log.d("clima", response.toString());
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.d("clima", error.getMessage());
+                }
+            }) {
+                @Override
+                public Map<String, String> getHeaders() {
+                    String api_key_header_value = "key=AAAAn4Y4Ciw:APA91bHAgDKs1SakEKc-cdMI4LYz7G8O3IZ6odbpKU8h5tu0SmyICpeOhMFeBnwdOsccZVmUDuwZ245PWt_kk09E2fnS78VelY_JbaJ1XtJVNl4Na6QCioeXSoFS4kMvlDHzJ9EJvX1Q";
+                    Map<String, String> headers = new HashMap<>();
+                    headers.put("Content-Type", "application/json");
+                    headers.put("Authorization", api_key_header_value);
+                    return headers;
+                }
+            };
+
+            queue.add(request);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @SuppressLint("InvalidWakeLockTag")
@@ -317,10 +533,13 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         mCallId = intent.getStringExtra("CALL_ID");
         inOrOut = intent.getStringExtra(EXTRA_DATA_IN_OR_OUT);
         roomToken = intent.getStringExtra("room_token");
+        groupName = intent.getStringExtra("callerName");
         roomId = intent.getStringExtra("token");
-        if (inOrOut.equals("IN"))
+        if (inOrOut.equals("IN")) {
             key = intent.getStringExtra("key");
-        //todo check
+            groupImage = intent.getStringExtra("imageUrl");
+        }
+
         roomToken = intent.getStringExtra("room_token");
         isVideoCall = intent.getBooleanExtra("isVideoCall", false);
         mAudioPlayer = new AudioPlayer(this);
@@ -340,7 +559,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         mySwitchCameraLLY = findViewById(R.id.switchVideo_LLY);
         myCallScreenRootRLY = findViewById(R.id.layout_call_screen_root_RLY);
 
-        onZegoCreated();
+        onAgoraEngineStarted();
 
         findViewById(R.id.hangupButton).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -381,7 +600,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             public void onClick(View view) {
                 Intent callIntent = new Intent(GroupCallActivity.this, ContactActivity.class).putExtra("group", true);
                 startActivityForResult(callIntent, 101);
-                //startActivity(callIntent);
             }
         });
     }
@@ -391,43 +609,12 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
         if (requestCode == 101) {
             if (resultCode == RESULT_OK) {
-
-                if (!inOrOut.equals("IN")) {
-                    tempUser = data.getParcelableExtra("contact");
-                    if (tempUser != null) {
-                        boolean isFound = false;
-                        for (int i = 0; i < group.getUserIds().size(); i++) {
-                            if (group.getUserIds().get(i).contains(tempUser.getId())) {
-                                isFound = true;
-                                break;
-                            }
-                        }
-                        if (isFound) {
-                            Toast.makeText(this, "user already invited", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-
-                        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
-
-                        HashMap<String, Object> hashMap = new HashMap<>();
-                        hashMap.put("is_video", isVideoCall);
-                        hashMap.put("is_group", true);
-                        hashMap.put("call_status", 0);
-                        hashMap.put("channel_id", roomId);
-                        hashMap.put("channel_token", roomToken);
-                        hashMap.put("caller_id", group.getId());
-                        hashMap.put("caller_name", group.getName());
-                        hashMap.put("receiver_id", group.getId());
-
-                        reference.child(tempUser.getId()).child(key).setValue(hashMap).addOnCompleteListener(new OnCompleteListener<Void>() {
-                            @Override
-                            public void onComplete(@NonNull Task<Void> task) {
-                                Toast.makeText(GroupCallActivity.this, "Added to call", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                    }
-                } else {
-                    Toast.makeText(this, "Only caller can add person", Toast.LENGTH_SHORT).show();
+                tempUser = data.getParcelableExtra("contact");
+                if (tempUser != null) {
+                    if (tempUser.getId().equals(userMe.getId()))
+                        Toast.makeText(this, "You can't call yourself", Toast.LENGTH_SHORT).show();
+                    else
+                        pushCallNotification(false, tempUser.getId());
                 }
             }
         }
@@ -462,22 +649,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             muIdsList.clear();
         }
 
-        if (!inOrOut.equals("IN")) {
-            if (myHandler != null && myRunnable != null)
-                myHandler.removeCallbacks(myRunnable);
-        }
-
-        if (isLoggedIn) {
-
-            try {
-                if (!inOrOut.equals("IN")) {
-                    sendMissedCallUpdate();
-                } else {
-                    //
-                }
-            } catch (Exception e) {
-            }
-        }
         try {
             if (wlOff != null && wlOff.isHeld()) {
                 wlOff.release();
@@ -502,13 +673,18 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
         HashMap<String, Object> datamap = new HashMap<>();
         datamap.put("is_video", isVideoCall);
-        datamap.put("is_group", true);
+        //datamap.put("is_group", true);
         datamap.put("call_status", 0);
+        datamap.put("user", userMe.getId());
+        try {
+            datamap.put("timeStamp", new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date()));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         datamap.put("channel_id", roomId);
         datamap.put("channel_token", roomToken);
         datamap.put("caller_id", group.getId());
         datamap.put("caller_name", group.getName());
-        datamap.put("receiver_id", group.getId());
 
         for (int i = 0; i < group.getUserIds().size(); i++) {
             if (!userMe.getId().equals(group.getUserIds().get(i))) {
@@ -525,14 +701,14 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     private void saveLog() {
         if (!logSaved) {
             rChatDb.beginTransaction();
-            rChatDb.copyToRealm(new LogCall(user, System.currentTimeMillis(), mCallDurationSecond,
+            rChatDb.copyToRealm(new LogCall(user, System.currentTimeMillis(), 0,
                     isVideoCall, inOrOut, group.getId(), group.getId()));
             rChatDb.commitTransaction();
             logSaved = true;
         }
     }
 
-    void onZegoCreated() {
+    void onAgoraEngineStarted() {
         if (isVideoCall && !checkSelfPermission(REQUESTED_PERMISSIONS[0], PERMISSION_REQ_ID) &&
                 checkSelfPermission(REQUESTED_PERMISSIONS[1], PERMISSION_REQ_ID) &&
                 checkSelfPermission(REQUESTED_PERMISSIONS[2], PERMISSION_REQ_ID)) {
@@ -557,8 +733,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
 
         String uId = userMe.getId().substring(userMe.getId().length() - 5);
         configUid = Integer.parseInt(uId);
-
-        //todo room token for incomming
 
         if (isVideoCall) {
             mRtcEngine.enableVideo();
@@ -589,7 +763,7 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
             mGridVideoViewContainer.initViewContainer(this, configUid, muIdsList, mIsLandscape); // first is now full view
 
         }
-        mRtcEngine.joinChannel(roomToken, roomId, "Extra Optional Data", 0);
+        mRtcEngine.joinChannel(roomToken, roomId, "Extra Optional Data", configUid);
         if (isVideoCall) {
             setVolumeControlStream(AudioManager.STREAM_SYSTEM);
             isSpeaker = true;
@@ -606,95 +780,66 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         isMute();
         enableSpeaker(isSpeaker);
 
-        //String randomSuffix = String.valueOf(new Date().getTime() % (new Date().getTime() / 1000));
-
-//        if (!inOrOut.equals("IN"))
-//            roomId = roomId + userMe.getId() + randomSuffix;
-
+        mCallerName.setText(groupName);
         if (roomId != null) {
-            mCallerName.setText(group != null ? group.getName() : "2 People");
 
-            if (group != null) {
-//                Glide.with(this).load(user.getImage()).apply(new RequestOptions().placeholder(R.drawable.ic_logo_)).into(userImage1);
-//                Glide.with(this).load(user.getImage()).apply(RequestOptions.circleCropTransform().placeholder(R.drawable.ic_logo_)).into(userImage2);
-//                if (group.getImage() != null && !group.getImage().isEmpty()) {
-//                    if (user.getBlockedUsersIds() != null
-//                            && !group.getBlockedUsersIds().contains(group.getId()))
-//                        Picasso.get()
-//                                .load(user.getImage())
-//                                .tag(this)
-//                                .error(R.drawable.ic_avatar)
-//                                .placeholder(R.drawable.ic_avatar)
-//                                .into(userImage1);
-//                    else
-//                        Picasso.get()
-//                                .load(R.drawable.ic_avatar)
-//                                .tag(this)
-//                                .error(R.drawable.ic_avatar)
-//                                .placeholder(R.drawable.ic_avatar)
-//                                .into(userImage1);
-//
-//                    Picasso.get()
-//                            .load(user.getImage())
-//                            .tag(this)
-//                            .error(R.drawable.ic_avatar)
-//                            .placeholder(R.drawable.ic_avatar)
-//                            .into(userImage2);
-//                } else {
-//                    userImage1.setBackgroundResource(R.drawable.ic_avatar);
-//                    userImage2.setBackgroundResource(R.drawable.ic_avatar);
-//                }
+            if (!inOrOut.equals("IN")) {
+                if (group.getImage() != null && !group.getImage().isEmpty()) {
+
+                    Picasso.get()
+                            .load(group.getImage())
+                            .tag(this)
+                            .error(R.drawable.ic_avatar)
+                            .placeholder(R.drawable.ic_avatar)
+                            .into(userImage1);
+
+                    Picasso.get()
+                            .load(group.getImage())
+                            .tag(this)
+                            .error(R.drawable.ic_avatar)
+                            .placeholder(R.drawable.ic_avatar)
+                            .into(userImage2);
+                } else {
+                    userImage1.setBackgroundResource(R.drawable.ic_avatar);
+                    userImage2.setBackgroundResource(R.drawable.ic_avatar);
+                }
 //                tintBlue.setVisibility(View.INVISIBLE);
 //                remoteVideo.setVisibility(View.INVISIBLE);
+            } else {
+                if (groupImage != null && !groupImage.isEmpty()) {
+
+                    Picasso.get()
+                            .load(groupImage)
+                            .tag(this)
+                            .error(R.drawable.ic_avatar)
+                            .placeholder(R.drawable.ic_avatar)
+                            .into(userImage1);
+
+                    Picasso.get()
+                            .load(groupImage)
+                            .tag(this)
+                            .error(R.drawable.ic_avatar)
+                            .placeholder(R.drawable.ic_avatar)
+                            .into(userImage2);
+                } else {
+                    userImage1.setBackgroundResource(R.drawable.ic_avatar);
+                    userImage2.setBackgroundResource(R.drawable.ic_avatar);
+                }
             }
         } else {
             Log.e(TAG, "Started with invalid callId, aborting.");
             finish();
         }
-
+        userList = getUsers();
         updateUI();
+        if (!inOrOut.equals("IN"))
+            callUser();
 
-        if (!inOrOut.equals("IN")) {
-            myHandler = new Handler();
-            myHandler.postDelayed(myRunnable, 25000);
-        }
-    }
-
-    private void sendMissedCallUpdate() {
-
-        for (int i = 0; i < group.getUserIds().size(); i++) {
-            if (!userMe.getId().equals(group.getUserIds().get(i))) {
-                DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("data").child("call_zego");
-                reference.child(group.getUserIds().get(i)).child(key).addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.getChildrenCount() == 8) {
-                            if (dataSnapshot.child("call_status").getValue() != null) {
-                                int callStatus = Integer.parseInt(String.valueOf(dataSnapshot.child("call_status").getValue()));
-                                //Toast.makeText(GroupCallActivity.this, "call " + String.valueOf(callStatus), Toast.LENGTH_SHORT).show();
-                                Log.d("clima d", String.valueOf(callStatus));
-                                Log.d("clima d", dataSnapshot.getKey());
-
-                                if (callStatus == 0) {
-                                    dataSnapshot.getRef().child("call_status").setValue(6);
-                                }
-                            }
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError databaseError) {
-
-                    }
-                });
-
-            }
-        }
     }
 
     void updateUI() {
         if (roomId != null) {
-            myTxtCalling.setText(getResources().getString(R.string.app_name) + (isVideoCall ? " Video Calling" : " Voice Calling"));
+            myTxtCalling.setText(String.format("%s%s", getResources().getString(R.string.app_name), isVideoCall ? " Video Calling" : " Voice Calling"));
             tintBlue.setVisibility(isVideoCall ? View.GONE : View.VISIBLE);
             localVideo.setVisibility(!isVideoCall ? View.GONE : View.VISIBLE);
         }
@@ -785,7 +930,6 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
     }
 
     public boolean checkSelfPermission(String permission, int requestCode) {
-        Log.i("clima", "checkSelfPermission " + permission + " " + requestCode);
         if (ContextCompat.checkSelfPermission(this,
                 permission)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -1024,4 +1168,3 @@ public class GroupCallActivity extends BaseActivity implements SensorEventListen
         });
     }
 }
-

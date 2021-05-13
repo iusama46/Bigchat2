@@ -18,6 +18,20 @@ import io.realm.annotations.RealmClass;
 
 @RealmClass
 public class User implements Parcelable, RealmModel {
+    public static final Creator<User> CREATOR = new Creator<User>() {
+        @Override
+        public User createFromParcel(Parcel in) {
+            return new User(in);
+        }
+
+        @Override
+        public User[] newArray(int size) {
+            return new User[size];
+        }
+    };
+    public RealmList<solochat> solochat = new RealmList<>();
+    String token;
+    boolean deviceType;
     @Ignore
     private boolean online;
     @Exclude
@@ -25,20 +39,13 @@ public class User implements Parcelable, RealmModel {
     private String nameInPhone;
     @Ignore
     private boolean typing;
-
     @Ignore
     @Exclude
     private boolean selected;
-
     private String id, name, status, image;
-
     private String wallpaper;
-
     private long timestamp;
-
-    public RealmList<solochat> solochat = new RealmList<>();
     private RealmList<String> blockedUsersIds = new RealmList<>();
-
     public User() {
     }
 
@@ -56,26 +63,6 @@ public class User implements Parcelable, RealmModel {
         ArrayList<String> blockedUsersIds = in.createStringArrayList();
         this.blockedUsersIds = new RealmList<>();
         this.blockedUsersIds.addAll(blockedUsersIds);
-    }
-
-    public static final Creator<User> CREATOR = new Creator<User>() {
-        @Override
-        public User createFromParcel(Parcel in) {
-            return new User(in);
-        }
-
-        @Override
-        public User[] newArray(int size) {
-            return new User[size];
-        }
-    };
-
-    public boolean isSelected() {
-        return selected;
-    }
-
-    public void setSelected(boolean selected) {
-        this.selected = selected;
     }
 
     public User(String id, String name, String status, String image) {
@@ -97,6 +84,25 @@ public class User implements Parcelable, RealmModel {
         this.wallpaper = wallpaper;
     }
 
+    public static boolean validate(User user) {
+        return user != null && user.getId() != null && user.getName() != null && user.getStatus() != null;
+    }
+
+    public boolean isDeviceType() {
+        return deviceType;
+    }
+
+    public void setDeviceType(boolean deviceType) {
+        this.deviceType = deviceType;
+    }
+
+    public boolean isSelected() {
+        return selected;
+    }
+
+    public void setSelected(boolean selected) {
+        this.selected = selected;
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -108,8 +114,20 @@ public class User implements Parcelable, RealmModel {
         return id.equals(user.id);
     }
 
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
     public String getNameInPhone() {
         return nameInPhone;
+    }
+
+    public void setNameInPhone(String nameInPhone) {
+        this.nameInPhone = nameInPhone;
     }
 
     @Override
@@ -123,10 +141,6 @@ public class User implements Parcelable, RealmModel {
 
     public void setTyping(boolean typing) {
         this.typing = typing;
-    }
-
-    public void setNameInPhone(String nameInPhone) {
-        this.nameInPhone = nameInPhone;
     }
 
     public String getImage() {
@@ -149,6 +163,10 @@ public class User implements Parcelable, RealmModel {
         return online;
     }
 
+    public void setOnline(boolean online) {
+        this.online = online;
+    }
+
     public String getId() {
         return id;
     }
@@ -161,12 +179,12 @@ public class User implements Parcelable, RealmModel {
         return this.name;
     }
 
-    public String getNameToDisplay() {
-        return (this.nameInPhone != null) ? this.nameInPhone : this.name;
-    }
-
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getNameToDisplay() {
+        return (this.nameInPhone != null) ? this.nameInPhone : this.name;
     }
 
     @Override
@@ -180,10 +198,6 @@ public class User implements Parcelable, RealmModel {
 
     public void setWallpaper(String wallpaper) {
         this.wallpaper = wallpaper;
-    }
-
-    public void setOnline(boolean online) {
-        this.online = online;
     }
 
     public long getTimeStamp() {
@@ -228,9 +242,5 @@ public class User implements Parcelable, RealmModel {
             blockedIds.addAll(this.blockedUsersIds);
             parcel.writeStringList(blockedIds);
         }
-    }
-
-    public static boolean validate(User user) {
-        return user != null && user.getId() != null && user.getName() != null && user.getStatus() != null;
     }
 }
