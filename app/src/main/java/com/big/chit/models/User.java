@@ -30,8 +30,8 @@ public class User implements Parcelable, RealmModel {
         }
     };
     public RealmList<solochat> solochat = new RealmList<>();
-    String token;
-    boolean deviceType;
+
+
     @Ignore
     private boolean online;
     @Exclude
@@ -88,13 +88,7 @@ public class User implements Parcelable, RealmModel {
         return user != null && user.getId() != null && user.getName() != null && user.getStatus() != null;
     }
 
-    public boolean isDeviceType() {
-        return deviceType;
-    }
 
-    public void setDeviceType(boolean deviceType) {
-        this.deviceType = deviceType;
-    }
 
     public boolean isSelected() {
         return selected;
@@ -114,13 +108,7 @@ public class User implements Parcelable, RealmModel {
         return id.equals(user.id);
     }
 
-    public String getToken() {
-        return token;
-    }
 
-    public void setToken(String token) {
-        this.token = token;
-    }
 
     public String getNameInPhone() {
         return nameInPhone;

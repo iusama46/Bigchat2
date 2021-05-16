@@ -1,9 +1,9 @@
 <component name="libraryTable">
   <library name="Gradle: com.mxn.soul:flowingdrawer-core:2.0.0@aar">
     <CLASSES>
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/flowingdrawer-core-2.0.0.aar/543c81cee8a8377dc7f7eb8a83b8f61b/AndroidManifest.xml" />
-      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/flowingdrawer-core-2.0.0.aar/543c81cee8a8377dc7f7eb8a83b8f61b/jars/classes.jar!/" />
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/flowingdrawer-core-2.0.0.aar/543c81cee8a8377dc7f7eb8a83b8f61b/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/flowingdrawer-core-2.0.0.aar/3ac009ef2fc471c764156a1223237a7a/AndroidManifest.xml" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/flowingdrawer-core-2.0.0.aar/3ac009ef2fc471c764156a1223237a7a/res" />
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/flowingdrawer-core-2.0.0.aar/3ac009ef2fc471c764156a1223237a7a/jars/classes.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

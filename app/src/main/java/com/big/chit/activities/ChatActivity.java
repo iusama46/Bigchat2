@@ -776,7 +776,7 @@ public class ChatActivity extends BaseActivity implements OnMessageItemClick,
                 }
             });
         } catch (Exception e) {
-            Log.d("clima", e.getMessage());
+           // Log.d("clima", e.getMessage());
 
         }
     }

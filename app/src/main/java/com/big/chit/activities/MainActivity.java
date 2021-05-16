@@ -64,6 +64,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.iid.FirebaseInstanceId;
 import com.mxn.soul.flowingdrawer_core.ElasticDrawer;
 import com.mxn.soul.flowingdrawer_core.FlowingDrawer;
 import com.squareup.picasso.Picasso;
@@ -80,12 +82,10 @@ import io.realm.Realm;
 
 public class MainActivity extends BaseActivity implements HomeIneractor, OnUserGroupItemClick, View.OnClickListener, ContextualModeInteractor, UserGroupSelectionDismissListener {
     private static final int REQUEST_CODE_CHAT_FORWARD = 99;
-    private static final int REQUEST_PERMISSION_CALL = 951;
-    private static final String CHANNEL_ID_USER_MISSCALL = "my_channel_04";
+
     public static ArrayList<User> myUsers = new ArrayList<>();
     public static String userId;
-    public static String callerId;
-    public static String RoomId;
+
     public static String name;
     private static String USER_SELECT_TAG = "userselectdialog";
     private static String OPTIONS_MORE = "optionsmore";
@@ -146,7 +146,6 @@ public class MainActivity extends BaseActivity implements HomeIneractor, OnUserG
         floatingActionButton.setOnClickListener(this);
         floatingActionButton.setVisibility(View.VISIBLE);
 
-
         setupViewPager();
         fetchContacts();
         markOnline(true);
@@ -156,9 +155,10 @@ public class MainActivity extends BaseActivity implements HomeIneractor, OnUserG
     }
 
 
+
+
     private void pushNotification() {
         try {
-
             RequestQueue queue = Volley.newRequestQueue(this);
             String roomUid = getRoomId();
             String url = "https://agoratokenbig.herokuapp.com/access_token?channel=" + roomUid;
@@ -180,7 +180,6 @@ public class MainActivity extends BaseActivity implements HomeIneractor, OnUserG
                             myEdit.putString("roomId", roomUid);
                             myEdit.putString("roomToken", token);
                             myEdit.apply();
-
 
                         } catch (JSONException e) {
                             e.printStackTrace();
@@ -741,6 +740,14 @@ public class MainActivity extends BaseActivity implements HomeIneractor, OnUserG
     @Override
     protected void onResume() {
         super.onResume();
-
+        try {
+            String token = FirebaseInstanceId.getInstance().getToken();
+            String uId = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
+            DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(uId);
+            reference.child("deviceToken").setValue(token);
+            reference.child("osType").setValue("android");
+        } catch (Exception e) {
+        //    Log.d("clima e", e.getMessage());
+        }
     }
 }

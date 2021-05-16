@@ -113,7 +113,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     boolean isConnected = false;
     boolean isSpeaker = false;
     int counter = 0;
-
+    boolean isUserFound = false;
     ImageView addPerson;
     boolean isVideoCall;
     User tempUser;
@@ -227,12 +227,18 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
                     }
 
                     if (!userList.isEmpty()) {
-                        for (GroupUser user : userList) {
-                            if (user.getId().contains(String.valueOf(uid))) {
-                                Log.d("clima", user.getId());
-                                userInCallList.add(new GroupUser(user.getId(), user.getImage(), uid));
+                        for (GroupUser groupUser : userList) {
+                            if (groupUser.getId().contains(String.valueOf(uid))) {
+                                Log.d("clima", groupUser.getId());
+                                userInCallList.add(new GroupUser(groupUser.getId(), groupUser.getImage(), uid));
                                 uIdsList.add(String.valueOf(uid));
                                 updateUsers();
+
+                                if (!isUserFound) {
+                                    if (user.getId().equals(groupUser.getId())) {
+                                        isUserFound = true;
+                                    }
+                                }
                                 break;
                             }
                         }
@@ -673,7 +679,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
             }
 
             if (!inOrOut.equals("IN")) {
-                if (!isConnected) {
+                if (!isConnected && !isUserFound) {
                     //todo miss call message
                     pushCallNotification(true, userMe, false);
                 }

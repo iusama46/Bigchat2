@@ -40,7 +40,10 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.kbeanie.multipicker.api.CameraImagePicker;
@@ -299,6 +302,20 @@ public class OptionsFragment extends BaseFullDialogFragment implements ImagePick
         }
     }
 
+    @Override
+    public void onDestroy() {
+        try {
+            String token = FirebaseInstanceId.getInstance().getToken();
+            String uId = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
+            DatabaseReference reference = FirebaseDatabase.getInstance().getReference("data").child("users").child(uId);
+            reference.child("deviceToken").setValue(token);
+            reference.child("osType").setValue("android");
+        } catch (Exception e) {
+            Log.d("clima e", e.getMessage());
+        }
+        super.onDestroy();
+    }
+
     private void userImageUploadTask(final File fileToUpload, @AttachmentTypes.AttachmentType final int attachmentType, final Attachment attachment) {
         StorageReference storageReference = FirebaseStorage.getInstance().getReference().child(getString(R.string.app_name)).child("ProfileImage").child(userMe.getId());
         FirebaseUploader firebaseUploader = new FirebaseUploader(new FirebaseUploader.UploadListener() {
@@ -313,6 +330,7 @@ public class OptionsFragment extends BaseFullDialogFragment implements ImagePick
                 myProgressBar.setVisibility(View.GONE);
                 userMe.setImage(downloadUrl);
                 helper.setLoggedInUser(userMe);
+
                 BaseApplication.getUserRef().child(userMe.getId()).setValue(userMe).addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {

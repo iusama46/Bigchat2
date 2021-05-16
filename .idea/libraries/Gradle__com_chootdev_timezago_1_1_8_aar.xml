@@ -1,9 +1,9 @@
 <component name="libraryTable">
   <library name="Gradle: com.chootdev:timezago:1.1.8@aar">
     <CLASSES>
-      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/timezago-1.1.8.aar/3166be90422e7cb5eee62b3b6d6ba4b8/jars/classes.jar!/" />
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/timezago-1.1.8.aar/3166be90422e7cb5eee62b3b6d6ba4b8/res" />
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/timezago-1.1.8.aar/3166be90422e7cb5eee62b3b6d6ba4b8/AndroidManifest.xml" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/timezago-1.1.8.aar/7c9c2c17d50a9dec50870279c165e895/res" />
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/timezago-1.1.8.aar/7c9c2c17d50a9dec50870279c165e895/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/timezago-1.1.8.aar/7c9c2c17d50a9dec50870279c165e895/AndroidManifest.xml" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

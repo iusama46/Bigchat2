@@ -3,8 +3,11 @@
     <CLASSES>
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/relinker-1.2.2.aar/5422a5e8fcd12e9653762cc83addabc3/res" />
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/relinker-1.2.2.aar/5581bb22c74a45aed79f776cf9e97f1d/res" />
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/relinker-1.2.2.aar/5422a5e8fcd12e9653762cc83addabc3/AndroidManifest.xml" />
-      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/relinker-1.2.2.aar/5422a5e8fcd12e9653762cc83addabc3/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/relinker-1.2.2.aar/85ad2d8fbd06b9581db675cf31bb6c6f/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/relinker-1.2.2.aar/db276ee1d57c6f61f94c3eb408468bcd/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/relinker-1.2.2.aar/53c67e35f5fa161e7b94062b8d447487/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/relinker-1.2.2.aar/85ad2d8fbd06b9581db675cf31bb6c6f/AndroidManifest.xml" />
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/relinker-1.2.2.aar/85ad2d8fbd06b9581db675cf31bb6c6f/jars/classes.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

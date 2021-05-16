@@ -13,7 +13,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.support.multidex.MultiDex;
-import android.util.Log;
 
 import com.big.chit.models.User;
 import com.big.chit.receivers.ConnectivityReceiver;
@@ -166,15 +165,11 @@ public class BaseApplication extends Application implements LifecycleObserver {
     private void onAppBackgrounded() {
         markOnline(false);
         Helper.CURRENT_CHAT_ID = null;
-
-        Log.d("clima", "App in background");
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_START)
     private void onAppForegrounded() {
         markOnline(true);
-
-        Log.d("clima", "App in foreground");
     }
 
     private void markOnline(boolean b) {
