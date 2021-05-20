@@ -5,7 +5,9 @@
       <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/timezago-1.1.8.aar/7c9c2c17d50a9dec50870279c165e895/jars/classes.jar!/" />
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/timezago-1.1.8.aar/7c9c2c17d50a9dec50870279c165e895/AndroidManifest.xml" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.chootdev/timezago/1.1.8/94fd991e3efe48d328df4490741a169984386258/timezago-1.1.8-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.chootdev/timezago/1.1.8/2a14936070c8aa2bf6cf4b4d62ba795a2d573205/timezago-1.1.8-sources.jar!/" />
     </SOURCES>

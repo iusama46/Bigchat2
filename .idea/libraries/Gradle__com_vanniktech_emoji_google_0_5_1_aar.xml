@@ -5,7 +5,9 @@
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/emoji-google-0.5.1.aar/510cc64733ad8c8766392aeea4316804/AndroidManifest.xml" />
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/emoji-google-0.5.1.aar/510cc64733ad8c8766392aeea4316804/res" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.vanniktech/emoji-google/0.5.1/f07db96c6e73f6f97fd817d0dea9d413435e4b41/emoji-google-0.5.1-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.vanniktech/emoji-google/0.5.1/1a3adc7a0b19c01f40988ff613e2e0f6f9d8a9a8/emoji-google-0.5.1-sources.jar!/" />
     </SOURCES>

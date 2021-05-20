@@ -5,7 +5,9 @@
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/animateHorizontalProgressBar-0.2.4.aar/c7fef3949c738097e6e381ad0c497fd7/res" />
       <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/animateHorizontalProgressBar-0.2.4.aar/c7fef3949c738097e6e381ad0c497fd7/jars/classes.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.daasuu/animateHorizontalProgressBar/0.2.4/d9c0d15211e4eecf256c980c53db9db7c55286cb/animateHorizontalProgressBar-0.2.4-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.daasuu/animateHorizontalProgressBar/0.2.4/184334e68d474be0dfc12b7179673f616c7ecbeb/animateHorizontalProgressBar-0.2.4-sources.jar!/" />
     </SOURCES>

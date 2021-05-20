@@ -128,7 +128,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     private RelativeLayout mSmallVideoViewDock;
     private RtcEngine mRtcEngine;
     private AudioPlayer mAudioPlayer;
-    private String mCallId, inOrOut;
+    private String inOrOut;
     private boolean mAddedListener, isMute, alphaInvisible, logSaved;
     private RelativeLayout myCallScreenRootRLY;
     private TextView mCallState, mCallerName, myTxtCalling;
@@ -197,6 +197,8 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
                 public void run() {
                     isLoggedIn = true;
                     Log.d("clima user ", String.valueOf(uid));
+                    Log.d("clima user ", String.valueOf(counter));
+
 
                     if (!isVideoCall)
                         setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
@@ -210,8 +212,8 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
                     if (!isConnected) {
                         mAudioPlayer.stopProgressTone();
-                        if (!isVideoCall)
-                            myTxtCalling.setText(getResources().getString(R.string.app_name) + " Call Connected");
+                        //if (!isVideoCall)
+                        myTxtCalling.setText(getResources().getString(R.string.app_name) + " Call Connected");
 
                         mCallDuration.setVisibility(View.VISIBLE);
                         mCallDuration.setFormat("%02d:%02d");
@@ -259,7 +261,9 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
                         if (temp <= 1)
                             endCall();
                     }
-
+                    Log.d("clima user ", "removed");
+                    Log.d("clima user ", String.valueOf(uid));
+                    Log.d("clima user ", String.valueOf(counter));
                     try {
                         uIdsList.remove(String.valueOf(uid));
                         for (GroupUser groupUser : userInCallList) {
@@ -398,8 +402,12 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
 
                                 String deviceText = Objects.requireNonNull(dataSnapshot.child("osType").getValue()).toString();
                                 tempIsAndroid[0] = deviceText.equals("android");
-
+                                //if (tempIsAndroid[0])
                                 pushNotificationToDevice(isMissedCall, tempUserToken[0], tempIsAndroid[0], true);
+                                //else if (counter < 3)
+                                //pushNotificationToDevice(isMissedCall, tempUserToken[0], tempIsAndroid[0], true);
+//                                else if (counter > 3)
+//                                    Toast.makeText(CallScreenActivity.this, "You can't add this user into call", Toast.LENGTH_SHORT).show();
                             }
                         } catch (Exception e) {
                             Toast.makeText(CallScreenActivity.this, "Something went gone wrong", Toast.LENGTH_SHORT).show();
@@ -437,6 +445,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
                 notificationObject.put("body", isMissedCall ? "PakOne" : "PakOne Voice Calling...");
                 notificationObject.put("mutable_content", true);
                 notificationObject.put("sound", "incoming.wav");
+                notificationObject.put("callerImage", userMe.getImage());
                 notificationObject.put("content_available", true);
             }
 
@@ -555,6 +564,9 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
         //todo check later for incoming call
         roomToken = intent.getStringExtra("room_token");
         roomId = intent.getStringExtra("token");
+
+//        roomToken="006e7d3be2abaf54f8cbe2a329271388a26IACCPPoqwZbrrNDIldiSkJgGE/8q1C7NpJIWFhB48hyqW3F/OpAAAAAAEACGNTwm8lWlYAEAAQAAAAAA";
+//        roomId="eultbqd";
         if (inOrOut.equals("IN")) {
             key = intent.getStringExtra("key");
         } else {
@@ -654,7 +666,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
     public void onResume() {
         super.onResume();
         mSensorManager.registerListener(this, mProximity, SensorManager.SENSOR_DELAY_NORMAL);
-        updateUI();
+        //updateUI();
     }
 
     @Override
@@ -817,6 +829,7 @@ public class CallScreenActivity extends BaseActivity implements SensorEventListe
                 }
             });
 
+            //configUid = 0;
             SurfaceView surfaceV = RtcEngine.CreateRendererView(getApplicationContext());
             mRtcEngine.setupLocalVideo(new VideoCanvas(surfaceV, VideoCanvas.RENDER_MODE_HIDDEN, configUid));
             surfaceV.setZOrderOnTop(false);

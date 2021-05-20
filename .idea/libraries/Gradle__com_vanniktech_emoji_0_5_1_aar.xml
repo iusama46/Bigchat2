@@ -5,7 +5,9 @@
       <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/emoji-0.5.1.aar/a21b647eda4b528860bb05ba3d76c98d/jars/classes.jar!/" />
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/emoji-0.5.1.aar/a21b647eda4b528860bb05ba3d76c98d/res" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.vanniktech/emoji/0.5.1/1f394af3aa4c2a035df73fc4b2f71c7400e271b/emoji-0.5.1-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.vanniktech/emoji/0.5.1/52a6d8f21e60b8e1eefa99ce726159c1f28d6df9/emoji-0.5.1-sources.jar!/" />
     </SOURCES>

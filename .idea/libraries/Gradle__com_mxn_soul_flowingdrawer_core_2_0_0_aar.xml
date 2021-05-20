@@ -5,7 +5,9 @@
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/flowingdrawer-core-2.0.0.aar/3ac009ef2fc471c764156a1223237a7a/res" />
       <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/flowingdrawer-core-2.0.0.aar/3ac009ef2fc471c764156a1223237a7a/jars/classes.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.mxn.soul/flowingdrawer-core/2.0.0/996bc3c4fa5a4609d96a64808e6ed41840ea4b74/flowingdrawer-core-2.0.0-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.mxn.soul/flowingdrawer-core/2.0.0/b147fbc1ac7b4c9279835a76097867a5bb39e448/flowingdrawer-core-2.0.0-sources.jar!/" />
     </SOURCES>

@@ -5,7 +5,9 @@
       <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/searchablespinnerlibrary-1.3.1.aar/233290f682da1a56226c341c9b87d7c4/AndroidManifest.xml" />
       <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/searchablespinnerlibrary-1.3.1.aar/233290f682da1a56226c341c9b87d7c4/jars/classes.jar!/" />
     </CLASSES>
-    <JAVADOC />
+    <JAVADOC>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.toptoche.searchablespinner/searchablespinnerlibrary/1.3.1/2ae7ea7094930fdd2d472d18cab03541630a0c52/searchablespinnerlibrary-1.3.1-javadoc.jar!/" />
+    </JAVADOC>
     <SOURCES>
       <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.toptoche.searchablespinner/searchablespinnerlibrary/1.3.1/329c9cde91363146bcfe33e44933cef09e7836a4/searchablespinnerlibrary-1.3.1-sources.jar!/" />
     </SOURCES>
